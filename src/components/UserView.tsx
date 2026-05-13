@@ -47,15 +47,11 @@ export default function UserView() {
   async function getDynamicQR(base: string, amount: number) {
     setIsQRLoading(true);
     try {
-      // Trying the api.vtech.biz.id endpoint
-      // Using a proxy or direct fetch depending on CORS. 
-      // For now, attempting direct fetch.
-      const response = await fetch(`https://api.vtech.biz.id/qris/api.php?qris=${base}&nominal=${amount}`);
+      const response = await fetch(`https://api.vtech.biz.id/qris/api.php?qris=${encodeURIComponent(base)}&nominal=${amount}`);
       const data = await response.text();
-      if (data && data.startsWith('00')) {
-        setDynamicQR(data);
+      if (data && data.trim().startsWith('00')) {
+        setDynamicQR(data.trim());
       } else {
-        // Fallback to local generation if API fails or returns invalid data
         setDynamicQR(generateDynamicQRIS(base, amount));
       }
     } catch (err) {
