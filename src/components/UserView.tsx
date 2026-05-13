@@ -445,7 +445,7 @@ export default function UserView() {
           >
             Semua
           </button>
-          {categories.map(cat => (
+          {Array.from(new Map(categories.map(cat => [cat.name, cat])).values()).map(cat => (
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
