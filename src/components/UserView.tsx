@@ -42,26 +42,38 @@ export default function UserView() {
 
   useEffect(() => {
     if (orderStatus?.payment_method === 'qris' && orderStatus?.payment_status === 'unpaid' && qrisBase) {
+      setDynamicQR(''); // Clear old QR
       getDynamicQR(qrisBase, Number(orderStatus.total_amount));
     }
-  }, [orderStatus, qrisBase]);
+  }, [orderStatus?.id, qrisBase, vtechApiKey]);
 
   async function getDynamicQR(base: string, amount: number) {
+    if (!base) return;
     setIsQRLoading(true);
     const roundedAmount = Math.floor(amount);
     try {
       const url = `https://api.vtech.biz.id/api/payment/qris-dynamic?apikey=${vtechApiKey}&qris=${encodeURIComponent(base.trim())}&amount=${roundedAmount}&service_fee=${qrisFeeSettings.enabled}&fee_type=${qrisFeeSettings.type}&fee_value=${qrisFeeSettings.value}`;
       
+      console.log('Calling QRIS API:', url);
       const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+
       const result = await response.json();
+      console.log('QRIS API Result:', result);
 
       if (result.status && result.data && result.data.dynamic_qris) {
         setDynamicQR(result.data.dynamic_qris);
       } else {
+        const errorMsg = result.message || 'API return status false';
+        console.warn('QRIS API Failed:', errorMsg);
         setDynamicQR(generateDynamicQRIS(base, roundedAmount));
       }
     } catch (err) {
       console.error('API QRIS Error:', err);
+      // Fallback
       setDynamicQR(generateDynamicQRIS(base, roundedAmount));
     } finally {
       setIsQRLoading(false);
@@ -308,11 +320,23 @@ export default function UserView() {
                         <div className="w-8 h-8 border-4 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
                       </div>
                     ) : (
-                      <QRCodeSVG 
-                        value={dynamicQR || generateDynamicQRIS(qrisBase, Number(orderStatus.total_amount))} 
-                        size={200} 
-                        level="H"
-                      />
+                      <>
+                        <QRCodeSVG 
+                          value={dynamicQR || generateDynamicQRIS(qrisBase, Number(orderStatus.total_amount))} 
+                          size={200} 
+                          level="H"
+                        />
+                        {!dynamicQR && !isQRLoading && (
+                          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-neutral-900 text-[8px] text-white px-2 py-0.5 rounded-full whitespace-nowrap opacity-50">
+                            Local Generator Mode
+                          </div>
+                        )}
+                        {dynamicQR && (
+                          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-green-600 text-[8px] text-white px-2 py-0.5 rounded-full whitespace-nowrap">
+                            V-Tech API Active
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                   <div className="mt-4 bg-white p-3 rounded-xl border border-neutral-200">
