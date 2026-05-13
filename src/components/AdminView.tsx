@@ -18,7 +18,8 @@ import {
   TrendingUp,
   CreditCard,
   Banknote,
-  MoreVertical
+  MoreVertical,
+  ChevronRight
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { MenuItem, Category, Order, RestaurantTable } from '../types';
