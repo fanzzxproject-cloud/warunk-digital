@@ -20,10 +20,19 @@ export default function AdminLogin({ onLogin }: { onLogin: () => void }) {
     });
 
     if (authError) {
-      setError('Email atau password salah');
+      if (authError.message.includes('Invalid login credentials')) {
+        setError('Email atau password salah. Pastikan User sudah ada di Supabase Authentication.');
+      } else if (authError.message.includes('Email not confirmed')) {
+        setError('Email belum dikonfirmasi. Buka Dashboard Supabase > Authentication > Providers > Email, lalu matikan "Confirm Email" atau konfirmasi email Anda.');
+      } else {
+        setError(`Login gagal: ${authError.message}`);
+      }
       setLoading(false);
     } else {
-      onLogin();
+      // Small delay to let session propagate
+      setTimeout(() => {
+        onLogin();
+      }, 500);
     }
   };
 
@@ -50,6 +59,12 @@ export default function AdminLogin({ onLogin }: { onLogin: () => void }) {
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-2xl mb-6 text-sm font-bold text-center">
             {error}
+          </div>
+        )}
+
+        {(!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_URL.includes('supabase.co')) && (
+          <div className="bg-orange-500/10 border border-orange-500/20 text-orange-500 p-4 rounded-2xl mb-6 text-xs font-bold text-center">
+            ⚠️ Supabase URL belum diatur di Secrets.
           </div>
         )}
 
