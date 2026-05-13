@@ -39,6 +39,10 @@ export default function AdminView() {
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [qrisPayload, setQrisPayload] = useState('');
+  const [vtechApiKey, setVtechApiKey] = useState('');
+  const [qrisFeeEnabled, setQrisFeeEnabled] = useState('y');
+  const [qrisFeeType, setQrisFeeType] = useState('r');
+  const [qrisFeeValue, setQrisFeeValue] = useState('250');
 
   useEffect(() => {
     fetchData();
@@ -58,13 +62,26 @@ export default function AdminView() {
     const { data: itemData } = await supabase.from('menu_items').select('*').order('name');
     const { data: orderData } = await supabase.from('orders').select('*, table:restaurant_tables(*)').order('created_at', { ascending: false });
     const { data: tableData } = await supabase.from('restaurant_tables').select('*').order('table_number');
-    const { data: settingsData } = await supabase.from('settings').select('*').eq('key', 'qris_static_payload').single();
+    const { data: settingsData } = await supabase.from('settings').select('*');
 
     if (catData) setCategories(catData);
     if (itemData) setMenuItems(itemData);
     if (orderData) setOrders(orderData);
     if (tableData) setTables(tableData);
-    if (settingsData) setQrisPayload(settingsData.value || '');
+    
+    if (settingsData) {
+      const qris = settingsData.find(s => s.key === 'qris_static_payload');
+      const apiKey = settingsData.find(s => s.key === 'vtech_api_key');
+      const feeEnabled = settingsData.find(s => s.key === 'qris_fee_enabled');
+      const feeType = settingsData.find(s => s.key === 'qris_fee_type');
+      const feeValue = settingsData.find(s => s.key === 'qris_fee_value');
+
+      if (qris) setQrisPayload(qris.value || '');
+      if (apiKey) setVtechApiKey(apiKey.value || '');
+      if (feeEnabled) setQrisFeeEnabled(feeEnabled.value || 'y');
+      if (feeType) setQrisFeeType(feeType.value || 'r');
+      if (feeValue) setQrisFeeValue(feeValue.value || '250');
+    }
     setLoading(false);
   }
 
@@ -126,7 +143,18 @@ export default function AdminView() {
   };
 
   const saveQrisSettings = async () => {
-    await supabase.from('settings').upsert({ key: 'qris_static_payload', value: qrisPayload }, { onConflict: 'key' });
+    const updates = [
+      { key: 'qris_static_payload', value: qrisPayload },
+      { key: 'vtech_api_key', value: vtechApiKey },
+      { key: 'qris_fee_enabled', value: qrisFeeEnabled },
+      { key: 'qris_fee_type', value: qrisFeeType },
+      { key: 'qris_fee_value', value: qrisFeeValue }
+    ];
+
+    for (const update of updates) {
+      await supabase.from('settings').upsert(update, { onConflict: 'key' });
+    }
+    
     alert('QRIS Settings saved');
   };
 
@@ -519,6 +547,50 @@ export default function AdminView() {
                      <li>Salin (Copy) teks hasil scan yang diawali dengan <code className="bg-white/10 p-1 px-2 rounded font-mono text-orange-300">000201...</code></li>
                      <li>Tempel (Paste) teks tersebut pada kolom di bawah ini.</li>
                    </ol>
+                </div>
+
+                <div>
+                   <label className="block text-[10px] font-black uppercase mb-3 tracking-widest text-neutral-400">V-Tech API Key</label>
+                   <input 
+                      className="w-full border-2 border-neutral-100 p-4 rounded-2xl font-mono text-sm focus:ring-4 focus:ring-orange-100 focus:border-orange-500 transition-all outline-none bg-neutral-50"
+                      placeholder="sk-..."
+                      value={vtechApiKey}
+                      onChange={e => setVtechApiKey(e.target.value)}
+                   />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black uppercase mb-3 tracking-widest text-neutral-400">Fee Status</label>
+                    <select 
+                      className="w-full border-2 border-neutral-100 p-4 rounded-2xl text-sm focus:ring-4 focus:ring-orange-100 focus:border-orange-500 transition-all outline-none bg-neutral-50 font-bold"
+                      value={qrisFeeEnabled}
+                      onChange={e => setQrisFeeEnabled(e.target.value)}
+                    >
+                      <option value="y">Enabled (Y)</option>
+                      <option value="n">Disabled (N)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase mb-3 tracking-widest text-neutral-400">Fee Type</label>
+                    <select 
+                      className="w-full border-2 border-neutral-100 p-4 rounded-2xl text-sm focus:ring-4 focus:ring-orange-100 focus:border-orange-500 transition-all outline-none bg-neutral-50 font-bold"
+                      value={qrisFeeType}
+                      onChange={e => setQrisFeeType(e.target.value)}
+                    >
+                      <option value="r">Flat (R)</option>
+                      <option value="p">Percentage (P)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase mb-3 tracking-widest text-neutral-400">Fee Value</label>
+                    <input 
+                      className="w-full border-2 border-neutral-100 p-4 rounded-2xl text-sm focus:ring-4 focus:ring-orange-100 focus:border-orange-500 transition-all outline-none bg-neutral-50 font-bold"
+                      type="number"
+                      value={qrisFeeValue}
+                      onChange={e => setQrisFeeValue(e.target.value)}
+                    />
+                  </div>
                 </div>
 
                 <div>
