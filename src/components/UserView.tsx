@@ -51,29 +51,41 @@ export default function UserView() {
     if (!base) return;
     setIsQRLoading(true);
     const roundedAmount = Math.floor(amount);
+    
+    // Validasi API Key
+    if (!vtechApiKey || vtechApiKey.trim() === '') {
+      console.warn('V-Tech API Key is not set, using local fallback generator');
+      setDynamicQR(generateDynamicQRIS(base, roundedAmount));
+      setIsQRLoading(false);
+      return;
+    }
+
     try {
-      const url = `https://api.vtech.biz.id/api/payment/qris-dynamic?apikey=${vtechApiKey}&qris=${encodeURIComponent(base.trim())}&amount=${roundedAmount}&service_fee=${qrisFeeSettings.enabled}&fee_type=${qrisFeeSettings.type}&fee_value=${qrisFeeSettings.value}`;
+      // Pastikan parameter sesuai dokumentasi (service_fee=y/n)
+      const feeEnabled = qrisFeeSettings.enabled === 'y' ? 'y' : 'n';
+      const url = `https://api.vtech.biz.id/api/payment/qris-dynamic?apikey=${vtechApiKey.trim()}&qris=${encodeURIComponent(base.trim())}&amount=${roundedAmount}&service_fee=${feeEnabled}&fee_type=${qrisFeeSettings.type}&fee_value=${qrisFeeSettings.value}`;
       
-      console.log('Calling QRIS API:', url);
+      console.log('Requesting Dynamic QRIS from V-Tech API...');
       const response = await fetch(url);
       
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
+        throw new Error(`HTTP Error ${response.status}`);
       }
 
       const result = await response.json();
-      console.log('QRIS API Result:', result);
-
-      if (result.status && result.data && result.data.dynamic_qris) {
+      
+      if (result.status === true && result.data && result.data.dynamic_qris) {
+        console.log('V-Tech API Success');
         setDynamicQR(result.data.dynamic_qris);
       } else {
-        const errorMsg = result.message || 'API return status false';
-        console.warn('QRIS API Failed:', errorMsg);
+        const errorMsg = result.message || 'Unknown API Error';
+        console.error('V-Tech API returned fail status:', errorMsg);
+        // Terpaksa fallback ke generator lokal jika API gagal
         setDynamicQR(generateDynamicQRIS(base, roundedAmount));
       }
     } catch (err) {
-      console.error('API QRIS Error:', err);
-      // Fallback
+      console.error('Network Error calling QRIS API:', err);
+      // Fallback lokal jika koneksi gagal (CORS atau Network)
       setDynamicQR(generateDynamicQRIS(base, roundedAmount));
     } finally {
       setIsQRLoading(false);
