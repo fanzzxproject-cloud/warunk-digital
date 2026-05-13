@@ -13,63 +13,68 @@ export function formatCurrency(amount: number) {
   }).format(amount);
 }
 
-// CRC16-CCITT for QRIS (Polynomial: 0x1021, Init: 0xFFFF)
+// CRC16-CCITT for QRIS (Standard EMV QR Specification)
 function crc16(data: string): string {
-  let crc = 0xFFFF;
-  for (let i = 0; i < data.length; i++) {
-    crc ^= data.charCodeAt(i) << 8;
-    for (let j = 0; j < 8; j++) {
-      if ((crc & 0x8000) !== 0) {
-        crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
-      } else {
-        crc = (crc << 1) & 0xFFFF;
-      }
+    let crc = 0xFFFF;
+    for (let i = 0; i < data.length; i++) {
+        let x = ((crc >> 8) ^ data.charCodeAt(i)) & 0xFF;
+        x ^= x >> 4;
+        crc = ((crc << 8) ^ (x << 12) ^ (x << 5) ^ x) & 0xFFFF;
     }
-  }
-  return crc.toString(16).toUpperCase().padStart(4, '0');
+    return crc.toString(16).toUpperCase().padStart(4, '0');
 }
 
 export function generateDynamicQRIS(basePayload: string, amount: number) {
   if (!basePayload || basePayload.length < 10) return basePayload;
   
-  // Clean payload
   let payload = basePayload.trim();
   
-  // Remove existing CRC
-  if (payload.includes('6304')) {
-    payload = payload.split('6304')[0];
+  // 1. Remove Existing CRC (Tag 63)
+  const crcIndex = payload.lastIndexOf('6304');
+  if (crcIndex !== -1) {
+    payload = payload.substring(0, crcIndex);
   }
 
-  // Simple EMV Tag Parser & Modifier
-  const tags: Record<string, string> = {};
-  let i = 0;
-  while (i < payload.length - 4) {
-    const tag = payload.substring(i, i + 2);
-    const lenStr = payload.substring(i + 2, i + 4);
-    const len = parseInt(lenStr);
-    const val = payload.substring(i + 4, i + 4 + len);
-    
-    if (isNaN(len)) break;
-    
-    tags[tag] = val;
-    i += 4 + len;
+  // Helper: Find tag position and length
+  const findTag = (p: string, targetTag: string) => {
+    let i = 0;
+    while (i < p.length - 4) {
+      const tag = p.substring(i, i + 2);
+      const len = parseInt(p.substring(i + 2, i + 4));
+      if (isNaN(len)) break;
+      if (tag === targetTag) return { start: i, len: len };
+      i += 4 + len;
+    }
+    return null;
+  };
+
+  // 2. Set Point of Initiation Method to 12 (Dynamic)
+  const tag01 = findTag(payload, '01');
+  if (tag01) {
+    payload = payload.substring(0, tag01.start + 4) + '12' + payload.substring(tag01.start + 6);
+  } else {
+    // Standard static payload might be missing it, inject after 00
+    payload = payload.substring(0, 4) + '010212' + payload.substring(4);
   }
 
-  // Update Tags
-  tags['01'] = '12'; // Set to Dynamic
-  tags['54'] = Math.floor(amount).toString(); // Set Amount
+  // 3. Set/Replace Transaction Amount (Tag 54)
+  const amountStr = Math.floor(amount).toString();
+  const amountTag = `54${amountStr.length.toString().padStart(2, '0')}${amountStr}`;
   
-  // Re-assemble (Keeping original order as much as possible is good, but standard order is also fine)
-  // Most important tags are 00, 01, 26-45, 51-53, 54, 58, 59, 60, 61, 62, 63
-  let newPayload = "";
-  const sortedTags = Object.keys(tags).sort();
-  
-  for (const tag of sortedTags) {
-    const val = tags[tag];
-    newPayload += tag + val.length.toString().padStart(2, '0') + val;
+  const tag54 = findTag(payload, '54');
+  if (tag54) {
+    payload = payload.substring(0, tag54.start) + amountTag + payload.substring(tag54.start + 4 + tag54.len);
+  } else {
+    // Insert before Tag 58
+    const tag58 = findTag(payload, '58');
+    if (tag58) {
+      payload = payload.substring(0, tag58.start) + amountTag + payload.substring(tag58.start);
+    } else {
+      payload += amountTag;
+    }
   }
 
-  // Add CRC
-  newPayload += '6304';
-  return newPayload + crc16(newPayload);
+  // 4. Re-calculate CRC
+  payload += '6304';
+  return payload + crc16(payload);
 }
