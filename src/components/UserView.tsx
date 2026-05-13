@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { MenuItem, Category, CartItem, RestaurantTable, Order } from '../types';
-import { cn, formatCurrency } from '../lib/utils';
+import { cn, formatCurrency, generateDynamicQRIS } from '../lib/utils';
 import { QRCodeSVG } from 'qrcode.react';
 
 export default function UserView() {
@@ -30,6 +30,7 @@ export default function UserView() {
   const [isCheckStatusOpen, setIsCheckStatusOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [orderIdInput, setOrderIdInput] = useState('');
+  const [qrisBase, setQrisBase] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -40,10 +41,12 @@ export default function UserView() {
     const { data: catData } = await supabase.from('categories').select('*').order('display_order');
     const { data: itemData } = await supabase.from('menu_items').select('*').order('name');
     const { data: tableData } = await supabase.from('restaurant_tables').select('*').order('table_number');
+    const { data: qrisData } = await supabase.from('settings').select('value').eq('key', 'qris_static_payload').single();
 
     if (catData) setCategories(catData);
     if (itemData) setMenuItems(itemData);
     if (tableData) setTables(tableData);
+    if (qrisData) setQrisBase(qrisData.value);
     setLoading(false);
   }
 
@@ -237,8 +240,14 @@ export default function UserView() {
                <div className="bg-neutral-50 p-6 rounded-2xl border-2 border-dashed border-neutral-200">
                   <p className="text-xs font-bold mb-4">SILAKAN SCAN UNTUK MEMBAYAR</p>
                   <div className="bg-white p-4 inline-block rounded-xl shadow-inner">
-                    <QRCodeSVG value={`qris-placeholder-${orderStatus.id}-${orderStatus.total_amount}`} size={200} />
+                    <QRCodeSVG 
+                      value={generateDynamicQRIS(qrisBase, Number(orderStatus.total_amount))} 
+                      size={200} 
+                    />
                   </div>
+                  <p className="mt-4 text-[10px] text-neutral-400 font-bold max-w-[200px] mx-auto break-all bg-white p-2 rounded border uppercase">
+                    {orderStatus.id.split('-')[0]} - {formatCurrency(Number(orderStatus.total_amount))}
+                  </p>
                   <p className="mt-4 text-xs text-neutral-400 italic">Pesanan akan diproses setelah pembayaran terkonfirmasi.</p>
                </div>
              )}
