@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { MenuItem, Category, CartItem, RestaurantTable, Order } from '../types';
-import { cn, formatCurrency, generateDynamicQRIS } from '../lib/utils';
+import { cn, formatCurrency, generateDynamicQRIS, calculateQRISFee } from '../lib/utils';
 import { QRCodeSVG } from 'qrcode.react';
 
 export default function UserView() {
@@ -61,9 +61,9 @@ export default function UserView() {
     }
 
     try {
-      // Pastikan parameter sesuai dokumentasi (service_fee=y/n)
-      const feeEnabled = qrisFeeSettings.enabled === 'y' ? 'y' : 'n';
-      const url = `https://api.vtech.biz.id/api/payment/qris-dynamic?apikey=${vtechApiKey.trim()}&qris=${encodeURIComponent(base.trim())}&amount=${roundedAmount}&service_fee=${feeEnabled}&fee_type=${qrisFeeSettings.type}&fee_value=${qrisFeeSettings.value}`;
+      // Because we already added the fee to the 'amount' in handleCheckout,
+      // we tell the API NOT to add another service fee (service_fee=n).
+      const url = `https://api.vtech.biz.id/api/payment/qris-dynamic?apikey=${vtechApiKey.trim()}&qris=${encodeURIComponent(base.trim())}&amount=${roundedAmount}&service_fee=n&fee_type=${qrisFeeSettings.type}&fee_value=${qrisFeeSettings.value}`;
       
       console.log('Requesting Dynamic QRIS from V-Tech API:', url);
       const response = await fetch(url);
@@ -141,6 +141,7 @@ export default function UserView() {
   });
 
   const cartTotal = cart.reduce((sum, item) => sum + item.menuItem.price * item.quantity, 0);
+  const qrisFee = calculateQRISFee(cartTotal, qrisFeeSettings.enabled, qrisFeeSettings.type, qrisFeeSettings.value);
 
   const addToCart = (item: MenuItem) => {
     setCart(prev => {
@@ -165,11 +166,13 @@ export default function UserView() {
   const handleCheckout = async (paymentMethod: 'cash' | 'qris') => {
     if (!selectedTable) return alert('Pilih meja terlebih dahulu');
     
+    const finalAmount = paymentMethod === 'qris' ? cartTotal + qrisFee : cartTotal;
+
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .insert({
         table_id: selectedTable.id,
-        total_amount: cartTotal,
+        total_amount: finalAmount,
         payment_method: paymentMethod,
         status: 'pending'
       })
@@ -324,7 +327,7 @@ export default function UserView() {
                   )}>{orderStatus.payment_status}</span>
                 </div>
                 <div className="flex justify-between text-xl font-bold border-t pt-3">
-                  <span>Total</span>
+                  <span>Total Bayar</span>
                   <span className="text-orange-600">{formatCurrency(Number(orderStatus.total_amount))}</span>
                 </div>
              </div>
@@ -358,7 +361,7 @@ export default function UserView() {
                     )}
                   </div>
                   <div className="mt-4 bg-white p-3 rounded-xl border border-neutral-200">
-                    <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mb-1">Total yang harus dibayar</p>
+                    <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mb-1">Sudah termasuk Admin/Fee</p>
                     <p className="font-black text-lg text-neutral-900">{formatCurrency(Number(orderStatus.total_amount))}</p>
                   </div>
                   <p className="mt-4 text-xs text-neutral-500 italic font-medium leading-relaxed">
@@ -603,12 +606,21 @@ export default function UserView() {
                   </div>
 
                   <div className="flex justify-between items-center px-4">
-                    <div className="space-y-1">
-                      <p className="text-neutral-500 text-[10px] font-black uppercase tracking-[0.2em]">Total Tagihan</p>
-                      <h3 className="text-4xl font-black italic tracking-tighter">{formatCurrency(cartTotal)}</h3>
-                    </div>
-                    <div className="w-16 h-16 bg-orange-600 rounded-[24px] flex items-center justify-center shadow-2xl shadow-orange-600/40">
-                      <ChevronRight className="w-10 h-10" />
+                    <div className="flex-1 space-y-1">
+                      <div className="flex justify-between items-end">
+                        <div className="space-y-1">
+                          <p className="text-neutral-500 text-[10px] font-black uppercase tracking-[0.2em]">Total Pesanan</p>
+                          <h3 className="text-4xl font-black italic tracking-tighter">
+                            {formatCurrency(cartTotal)}
+                          </h3>
+                        </div>
+                        {qrisFee > 0 && (
+                          <div className="text-right pb-1">
+                             <p className="text-orange-500 text-[10px] font-black uppercase tracking-widest leading-none">+ Admin QRIS</p>
+                             <p className="text-orange-600 font-bold text-sm italic">{formatCurrency(qrisFee)}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
