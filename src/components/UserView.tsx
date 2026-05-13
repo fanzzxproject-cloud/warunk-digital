@@ -192,6 +192,15 @@ export default function UserView() {
 
     if (itemsError) return alert('Gagal menyimpan item pesanan');
 
+    // Reduce stock
+    for (const item of cart) {
+      const newStock = Math.max(0, item.menuItem.stock_quantity - item.quantity);
+      await supabase
+        .from('menu_items')
+        .update({ stock_quantity: newStock })
+        .eq('id', item.menuItem.id);
+    }
+
     setOrderStatus(orderData);
     setCart([]);
     setIsCartOpen(false);
