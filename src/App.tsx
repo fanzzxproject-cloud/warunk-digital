@@ -22,15 +22,18 @@ export default function App() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
-
-    return () => subscription.unsubscribe();
   }, []);
 
   // For the purpose of this applet environment, we might want a way to toggle modes easily
   // In a real app, these would be separate routes or subdomains
   if (isAdmin) {
     if (!session) {
-      return <AdminLogin onLogin={() => {}} />;
+      return <AdminLogin onLogin={() => {
+        // Force session check update
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          setSession(session);
+        });
+      }} />;
     }
     return <AdminView />;
   }
