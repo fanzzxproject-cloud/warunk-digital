@@ -37,7 +37,10 @@ export default function AdminView() {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState({ start: format(new Date(), 'yyyy-MM-dd'), end: format(new Date(), 'yyyy-MM-dd') });
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [orderDetails, setOrderDetails] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [qrisPayload, setQrisPayload] = useState('');
   const [vtechApiKey, setVtechApiKey] = useState('');
   const [qrisFeeEnabled, setQrisFeeEnabled] = useState('y');
@@ -139,6 +142,25 @@ export default function AdminView() {
     if (confirm('Hapus menu ini?')) {
       await supabase.from('menu_items').delete().eq('id', id);
       fetchData();
+    }
+  };
+
+  const deleteOrder = async (id: string) => {
+    if (confirm('Hapus pesanan ini dari riwayat?')) {
+      await supabase.from('orders').delete().eq('id', id);
+      fetchData();
+    }
+  };
+
+  const fetchOrderDetails = async (order: any) => {
+    const { data, error } = await supabase
+      .from('order_items')
+      .select('*, menu_item:menu_items(*)')
+      .eq('order_id', order.id);
+    
+    if (data) {
+      setOrderDetails(data);
+      setSelectedOrder(order);
     }
   };
 
@@ -372,12 +394,23 @@ export default function AdminView() {
                     Live Order Stream
                   </h3>
                   <div className="flex gap-2">
-                    <button onClick={exportToExcel} className="p-2 px-4 bg-white/10 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-white/20">
+                    <button onClick={exportToExcel} className="p-2 px-4 bg-white/10 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-white/20 transition-all active:scale-95">
                         <Download className="w-4 h-4" /> Export Excel
                     </button>
-                    <button className="p-2 px-4 bg-white/10 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-white/20">
-                        <Filter className="w-4 h-4" /> Filter
-                    </button>
+                    <div className="flex bg-white/10 rounded-xl overflow-hidden border border-white/5">
+                        {['all', 'pending', 'preparing', 'completed'].map((status) => (
+                          <button 
+                            key={status}
+                            onClick={() => setStatusFilter(status)}
+                            className={cn(
+                              "px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all",
+                              statusFilter === status ? "bg-orange-600 text-white" : "hover:bg-white/10"
+                            )}
+                          >
+                            {status}
+                          </button>
+                        ))}
+                    </div>
                   </div>
                </div>
                
@@ -390,11 +423,13 @@ export default function AdminView() {
                         <th className="p-6">Amount</th>
                         <th className="p-6">Payment</th>
                         <th className="p-6">Status</th>
-                        <th className="p-6 text-right px-10">Manage</th>
+                        <th className="p-6 text-right px-10 border-l border-neutral-50">Manage</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-50">
-                      {orders.map(order => (
+                      {orders
+                        .filter(o => statusFilter === 'all' || o.status === statusFilter)
+                        .map(order => (
                         <tr key={order.id} className="hover:bg-neutral-50/50 transition-all">
                           <td className="p-6 px-10">
                              <div>
@@ -444,8 +479,23 @@ export default function AdminView() {
                                 <option value="cancelled">Cancelled</option>
                              </select>
                           </td>
-                          <td className="p-6 text-right px-10">
-                             <button className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"><MoreVertical className="w-5 h-5 text-neutral-300" /></button>
+                          <td className="p-6 text-right px-10 border-l border-neutral-50">
+                             <div className="flex justify-end gap-2">
+                               <button 
+                                onClick={() => fetchOrderDetails(order)}
+                                className="p-3 hover:bg-neutral-100 text-neutral-300 hover:text-neutral-900 rounded-xl transition-all"
+                                title="View Details"
+                               >
+                                <Search className="w-5 h-5" />
+                               </button>
+                               <button 
+                                onClick={() => deleteOrder(order.id)}
+                                className="p-3 hover:bg-red-50 text-neutral-300 hover:text-red-600 rounded-xl transition-all"
+                                title="Delete"
+                               >
+                                <Trash2 className="w-5 h-5" />
+                               </button>
+                             </div>
                           </td>
                         </tr>
                       ))}
@@ -685,6 +735,83 @@ export default function AdminView() {
                     Save Changes
                  </button>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Order Details Modal */}
+      <AnimatePresence>
+        {selectedOrder && (
+          <div className="fixed inset-0 bg-black/60 z-[110] backdrop-blur-md flex items-center justify-center p-4">
+            <motion.div 
+               initial={{ scale: 0.9, opacity: 0 }}
+               animate={{ scale: 1, opacity: 1 }}
+               className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]"
+            >
+              <div className="p-8 border-b border-neutral-100 flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-black italic uppercase leading-none">Order Details</h2>
+                  <p className="text-xs text-neutral-400 mt-2 font-mono uppercase tracking-widest">#{selectedOrder.id.slice(0, 8)}</p>
+                </div>
+                <button onClick={() => setSelectedOrder(null)} className="p-3 bg-neutral-100 rounded-2xl"><XCircle className="w-6 h-6" /></button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-8 space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-neutral-50 p-4 rounded-2xl">
+                    <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1">Meja</p>
+                    <p className="text-xl font-black">{selectedOrder.table?.table_number}</p>
+                  </div>
+                  <div className="bg-neutral-50 p-4 rounded-2xl">
+                    <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1">Time</p>
+                    <p className="text-lg font-bold">{format(new Date(selectedOrder.created_at), 'HH:mm:ss')}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest px-1">Items</p>
+                  {orderDetails.map((item: any) => (
+                    <div key={item.id} className="flex items-center gap-4 group">
+                      <div className="w-14 h-14 rounded-2xl overflow-hidden bg-neutral-100 shrink-0">
+                        <img src={item.menu_item?.image_url} alt="" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-neutral-900">{item.menu_item?.name}</p>
+                        <p className="text-xs text-neutral-500 font-medium">{item.quantity} x {formatCurrency(item.price_at_order)}</p>
+                      </div>
+                      <p className="font-black italic text-neutral-900">{formatCurrency(item.quantity * item.price_at_order)}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="border-t border-dashed border-neutral-200 pt-6 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-neutral-500 font-medium tracking-tight">Payment Method</span>
+                    <span className="font-black uppercase italic text-orange-600">{selectedOrder.payment_method}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-neutral-500 font-medium tracking-tight">Payment Status</span>
+                    <span className={cn(
+                      "font-black uppercase italic",
+                      selectedOrder.payment_status === 'paid' ? "text-green-600" : "text-red-500"
+                    )}>{selectedOrder.payment_status}</span>
+                  </div>
+                  <div className="flex justify-between items-end pt-4">
+                     <p className="text-neutral-400 text-[10px] font-black uppercase tracking-widest leading-none">Total Amount</p>
+                     <p className="text-3xl font-black italic text-neutral-900 leading-none">{formatCurrency(selectedOrder.total_amount)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-8 pt-0">
+                <button 
+                  onClick={() => setSelectedOrder(null)}
+                  className="w-full bg-neutral-900 text-white py-5 rounded-[24px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-neutral-200"
+                >
+                  Close Details
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
