@@ -76,8 +76,8 @@ export default function AdminView() {
       const feeType = settingsData.find(s => s.key === 'qris_fee_type');
       const feeValue = settingsData.find(s => s.key === 'qris_fee_value');
 
-      if (qris) setQrisPayload(qris.value || '');
-      if (apiKey) setVtechApiKey(apiKey.value || '');
+      if (qris) setQrisPayload(qris.value || '00020101021126570011ID.DANA.WWW011893600915302404310202090240431020303UMI51440014ID.CO.QRIS.WWW0215ID10265047373740303UMI5204581353033605802ID5911Vredo Store6015Kota Jakarta Pu6105103106304E034');
+      if (apiKey) setVtechApiKey(apiKey.value || 'sk-830401d3a1f9');
       if (feeEnabled) setQrisFeeEnabled(feeEnabled.value || 'y');
       if (feeType) setQrisFeeType(feeType.value || 'r');
       if (feeValue) setQrisFeeValue(feeValue.value || '250');
