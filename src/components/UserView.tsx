@@ -27,6 +27,7 @@ export default function UserView() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [orderStatus, setOrderStatus] = useState<Order | null>(null);
+  const [orderItemsDetails, setOrderItemsDetails] = useState<any[]>([]);
   const [isCheckStatusOpen, setIsCheckStatusOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [orderIdInput, setOrderIdInput] = useState('');
@@ -119,7 +120,12 @@ export default function UserView() {
       const { data: tableData } = await supabase.from('restaurant_tables').select('*').order('table_number');
       const { data: settingsData } = await supabase.from('settings').select('*');
 
-      if (catData) setCategories(catData);
+      if (catData) {
+        // Unique categories by name
+        const uniqueCats = Array.from(new Map(catData.map(cat => [cat.name, cat])).values())
+          .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+        setCategories(uniqueCats);
+      }
       if (itemData) setMenuItems(itemData);
       if (tableData) setTables(tableData);
       
@@ -202,8 +208,13 @@ export default function UserView() {
     }));
 
     const { error: itemsError } = await supabase.from('order_items').insert(orderItemsPayload);
-
     if (itemsError) return alert('Gagal menyimpan item pesanan');
+
+    // Fetch details to show on receipt
+    const { data: details } = await supabase
+      .from('order_items')
+      .select('*, menu_item:menu_items(*)')
+      .eq('order_id', orderData.id);
 
     // Reduce stock
     for (const item of cart) {
@@ -214,13 +225,14 @@ export default function UserView() {
         .eq('id', item.menuItem.id);
     }
 
+    if (details) setOrderItemsDetails(details);
     setOrderStatus(orderData);
     setCart([]);
     setIsCartOpen(false);
   };
 
   const checkOrderById = async () => {
-    const { data, error } = await supabase
+    const { data: order, error } = await supabase
       .from('orders')
       .select('*, table:restaurant_tables(*)')
       .eq('id', orderIdInput)
@@ -228,7 +240,14 @@ export default function UserView() {
     
     if (error) alert('Pesanan tidak ditemukan');
     else {
-      setOrderStatus(data);
+      // Fetch details
+      const { data: details } = await supabase
+        .from('order_items')
+        .select('*, menu_item:menu_items(*)')
+        .eq('order_id', order.id);
+      
+      if (details) setOrderItemsDetails(details);
+      setOrderStatus(order);
       setIsCheckStatusOpen(false);
     }
   };
@@ -352,6 +371,25 @@ export default function UserView() {
                   <span>Total Bayar</span>
                   <span className="text-orange-600">{formatCurrency(Number(orderStatus.total_amount))}</span>
                 </div>
+             </div>
+
+             {/* Order Items List */}
+             <div className="bg-neutral-50 rounded-2xl p-6 text-left space-y-4">
+               <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest px-1">Item yang dipesan</p>
+               <div className="space-y-3">
+                 {orderItemsDetails.map((item: any) => (
+                   <div key={item.id} className="flex items-center gap-3">
+                     <div className="w-10 h-10 rounded-xl overflow-hidden bg-white border border-neutral-100 shrink-0">
+                       <img src={item.menu_item?.image_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                     </div>
+                     <div className="flex-1">
+                       <p className="text-sm font-bold text-neutral-900 leading-tight">{item.menu_item?.name}</p>
+                       <p className="text-[10px] text-neutral-400 font-bold">{item.quantity} x {formatCurrency(item.price_at_order)}</p>
+                     </div>
+                     <p className="text-sm font-black italic">{formatCurrency(item.quantity * item.price_at_order)}</p>
+                   </div>
+                 ))}
+               </div>
              </div>
 
              {/* Guide Section */}
@@ -488,7 +526,7 @@ export default function UserView() {
           >
             Semua
           </button>
-          {Array.from(new Map(categories.map(cat => [cat.name, cat])).values()).map(cat => (
+          {categories.map(cat => (
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
