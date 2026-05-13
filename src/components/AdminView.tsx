@@ -54,7 +54,14 @@ export default function AdminView() {
     fetchData();
     const orderSubscription = supabase
       .channel('orders_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchData())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
+        // Play notification sound
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        audio.play().catch(e => console.log('Audio play blocked:', e));
+        fetchData();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => fetchData())
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, () => fetchData())
       .subscribe();
 
     return () => {
@@ -70,7 +77,12 @@ export default function AdminView() {
     const { data: tableData } = await supabase.from('restaurant_tables').select('*').order('table_number');
     const { data: settingsData } = await supabase.from('settings').select('*');
 
-    if (catData) setCategories(catData);
+    if (catData) {
+      // Unique categories by name to prevent doubles if DB has mess
+      const uniqueCats = Array.from(new Map(catData.map(cat => [cat.name, cat])).values())
+        .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+      setCategories(uniqueCats);
+    }
     if (itemData) setMenuItems(itemData);
     if (orderData) setOrders(orderData);
     if (tableData) setTables(tableData);
@@ -147,23 +159,27 @@ export default function AdminView() {
 
       const { error: uploadError } = await supabase.storage
         .from('menu-photos')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          contentType: file.type,
+          upsert: true
+        });
 
       if (uploadError) {
-        if (uploadError.message.includes('bucket not found')) {
-          // Attempt to create bucket would happen here, but for now we expect it to exist
-          // or we inform the user to create it in Supabase dashboard if possible.
-          // Alternatively, we can use a library to handle it.
-          alert('Bucket "menu-photos" tidak ditemukan. Silakan buat bucket dengan nama "menu-photos" di Supabase Storage Dashboard.');
-          return;
+        if (uploadError.message.includes('row-level security') || uploadError.message.includes('policy')) {
+          alert('Error: "Row-Level Security" active. Silakan jalankan SQL Policy di Supabase Dashboard untuk mengizinkan upload ke bucket "menu-photos".');
+        } else if (uploadError.message.includes('bucket not found')) {
+          alert('Error: Bucket "menu-photos" tidak ditemukan. Buat bucket baru bernama "menu-photos" di Supabase Storage dengan akses Public.');
+        } else {
+          alert(`Upload Gagal: ${uploadError.message}`);
         }
-        throw uploadError;
+        return;
       }
 
       const { data } = supabase.storage
         .from('menu-photos')
         .getPublicUrl(filePath);
 
+      console.log('Generated Public URL:', data.publicUrl);
       return data.publicUrl;
     } catch (error: any) {
       alert(error.message);
@@ -470,7 +486,7 @@ export default function AdminView() {
                     <td className="p-8">
                        <div className="flex items-center gap-4">
                          <div className="w-16 h-16 rounded-2xl overflow-hidden bg-neutral-100 border border-neutral-50">
-                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                          </div>
                          <div>
                            <p className="font-bold text-neutral-900">{item.name}</p>
@@ -782,6 +798,17 @@ export default function AdminView() {
                     </select>
                     <button 
                       onClick={async () => {
+                        const url = `${window.location.origin}/?table=${table.id}`;
+                        const win = window.open(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`, '_blank');
+                        if (!win) alert('Popup blocked! Please allow popups to see the QR code.');
+                      }}
+                      className="p-2 bg-white border border-neutral-200 text-orange-600 rounded-lg hover:bg-orange-50"
+                      title="Print Table QR"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={async () => {
                         if (confirm('Delete this table?')) {
                           await supabase.from('restaurant_tables').delete().eq('id', table.id);
                           fetchData();
@@ -950,7 +977,7 @@ export default function AdminView() {
                           accept="image/*"
                           className="w-full bg-neutral-50 border-0 p-4 rounded-2xl focus:ring-2 focus:ring-orange-500" 
                         />
-                        <p className="text-[10px] text-neutral-400 mt-1 italic">Click to upload from device</p>
+                        <p className="text-[10px] text-neutral-400 mt-1 italic">Click to upload. Pastikan Bucket "menu-photos" diset sebagai <b>Public</b> di Supabase.</p>
                       </div>
                       <div className="flex-1">
                         <input 
@@ -962,6 +989,11 @@ export default function AdminView() {
                       </div>
                     </div>
                     {uploading && <p className="text-xs text-orange-600 font-bold mt-2 animate-pulse">Uploading photo...</p>}
+                    {editingItem?.image_url && (
+                      <div className="mt-4 w-32 h-32 rounded-2xl overflow-hidden border border-neutral-100">
+                        <img src={editingItem.image_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      </div>
+                    )}
                  </div>
 
                  <div>
@@ -1017,7 +1049,7 @@ export default function AdminView() {
                   {orderDetails.map((item: any) => (
                     <div key={item.id} className="flex items-center gap-4 group">
                       <div className="w-14 h-14 rounded-2xl overflow-hidden bg-neutral-100 shrink-0">
-                        <img src={item.menu_item?.image_url} alt="" className="w-full h-full object-cover" />
+                        <img src={item.menu_item?.image_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       </div>
                       <div className="flex-1">
                         <p className="font-bold text-neutral-900">{item.menu_item?.name}</p>
