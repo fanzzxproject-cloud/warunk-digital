@@ -31,6 +31,8 @@ export default function UserView() {
   const [loading, setLoading] = useState(true);
   const [orderIdInput, setOrderIdInput] = useState('');
   const [qrisBase, setQrisBase] = useState('');
+  const [vtechApiKey, setVtechApiKey] = useState('');
+  const [qrisFeeSettings, setQrisFeeSettings] = useState({ enabled: 'n', type: 'r', value: '0' });
   const [dynamicQR, setDynamicQR] = useState('');
   const [isQRLoading, setIsQRLoading] = useState(false);
 
@@ -46,17 +48,21 @@ export default function UserView() {
 
   async function getDynamicQR(base: string, amount: number) {
     setIsQRLoading(true);
+    const roundedAmount = Math.floor(amount);
     try {
-      const response = await fetch(`https://api.vtech.biz.id/qris/api.php?qris=${encodeURIComponent(base)}&nominal=${amount}`);
-      const data = await response.text();
-      if (data && data.trim().startsWith('00')) {
-        setDynamicQR(data.trim());
+      const url = `https://api.vtech.biz.id/api/payment/qris-dynamic?apikey=${vtechApiKey}&qris=${encodeURIComponent(base.trim())}&amount=${roundedAmount}&service_fee=${qrisFeeSettings.enabled}&fee_type=${qrisFeeSettings.type}&fee_value=${qrisFeeSettings.value}`;
+      
+      const response = await fetch(url);
+      const result = await response.json();
+
+      if (result.status && result.data && result.data.dynamic_qris) {
+        setDynamicQR(result.data.dynamic_qris);
       } else {
-        setDynamicQR(generateDynamicQRIS(base, amount));
+        setDynamicQR(generateDynamicQRIS(base, roundedAmount));
       }
     } catch (err) {
       console.error('API QRIS Error:', err);
-      setDynamicQR(generateDynamicQRIS(base, amount));
+      setDynamicQR(generateDynamicQRIS(base, roundedAmount));
     } finally {
       setIsQRLoading(false);
     }
@@ -64,16 +70,38 @@ export default function UserView() {
 
   async function fetchData() {
     setLoading(true);
-    const { data: catData } = await supabase.from('categories').select('*').order('display_order');
-    const { data: itemData } = await supabase.from('menu_items').select('*').order('name');
-    const { data: tableData } = await supabase.from('restaurant_tables').select('*').order('table_number');
-    const { data: qrisData } = await supabase.from('settings').select('value').eq('key', 'qris_static_payload').single();
+    try {
+      const { data: catData } = await supabase.from('categories').select('*').order('display_order');
+      const { data: itemData } = await supabase.from('menu_items').select('*').order('name');
+      const { data: tableData } = await supabase.from('restaurant_tables').select('*').order('table_number');
+      const { data: settingsData } = await supabase.from('settings').select('*');
 
-    if (catData) setCategories(catData);
-    if (itemData) setMenuItems(itemData);
-    if (tableData) setTables(tableData);
-    if (qrisData) setQrisBase(qrisData.value);
-    setLoading(false);
+      if (catData) setCategories(catData);
+      if (itemData) setMenuItems(itemData);
+      if (tableData) setTables(tableData);
+      
+      if (settingsData) {
+          const qris = settingsData.find(s => s.key === 'qris_static_payload');
+          const apiKey = settingsData.find(s => s.key === 'vtech_api_key');
+          const feeEnabled = settingsData.find(s => s.key === 'qris_fee_enabled');
+          const feeType = settingsData.find(s => s.key === 'qris_fee_type');
+          const feeValue = settingsData.find(s => s.key === 'qris_fee_value');
+
+          if (qris) setQrisBase(qris.value || '');
+          if (apiKey) setVtechApiKey(apiKey.value || '');
+          if (feeEnabled || feeType || feeValue) {
+              setQrisFeeSettings({
+                  enabled: feeEnabled?.value || 'n',
+                  type: feeType?.value || 'r',
+                  value: feeValue?.value || '0'
+              });
+          }
+      }
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const filteredItems = menuItems.filter(item => {
@@ -134,7 +162,6 @@ export default function UserView() {
     setOrderStatus(orderData);
     setCart([]);
     setIsCartOpen(false);
-    alert(`Pesanan berhasil! ID: ${orderData.id}`);
   };
 
   const checkOrderById = async () => {
@@ -145,7 +172,10 @@ export default function UserView() {
       .single();
     
     if (error) alert('Pesanan tidak ditemukan');
-    else setOrderStatus(data);
+    else {
+      setOrderStatus(data);
+      setIsCheckStatusOpen(false);
+    }
   };
 
   if (!selectedTable) {
@@ -192,11 +222,11 @@ export default function UserView() {
             <motion.div 
                initial={{ scale: 0.9, opacity: 0 }}
                animate={{ scale: 1, opacity: 1 }}
-               className="bg-white p-6 rounded-2xl w-full max-w-sm"
+               className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl"
             >
               <h2 className="text-xl font-bold mb-4">Cek Status Pesanan</h2>
               <input 
-                className="w-full border p-3 rounded-lg mb-4"
+                className="w-full border p-3 rounded-lg mb-4 focus:ring-2 focus:ring-orange-500 outline-none"
                 placeholder="Masukkan ID Pesanan"
                 value={orderIdInput}
                 onChange={e => setOrderIdInput(e.target.value)}
@@ -204,13 +234,13 @@ export default function UserView() {
               <div className="flex gap-2">
                 <button 
                   onClick={() => setIsCheckStatusOpen(false)}
-                  className="flex-1 border p-3 rounded-lg"
+                  className="flex-1 border p-3 rounded-lg font-bold"
                 >
                   Batal
                 </button>
                 <button 
                   onClick={checkOrderById}
-                  className="flex-1 bg-orange-600 text-white p-3 rounded-lg"
+                  className="flex-1 bg-orange-600 text-white p-3 rounded-lg font-bold"
                 >
                   Cek
                 </button>
@@ -234,7 +264,7 @@ export default function UserView() {
         </header>
 
         <main className="max-w-2xl mx-auto space-y-6">
-          <div className="bg-white p-6 rounded-3xl shadow-sm space-y-6 text-center">
+          <div className="bg-white p-8 rounded-3xl shadow-sm space-y-6 text-center">
              <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
                 <Clock className="w-10 h-10 text-orange-600" />
              </div>
@@ -245,27 +275,34 @@ export default function UserView() {
 
              <div className="border-t pt-6 text-left space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-500">Meja</span>
+                  <span className="text-neutral-500 font-medium">Meja</span>
                   <span className="font-bold">{orderStatus.table?.table_number || selectedTable.table_number}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-500">ID Pesanan</span>
-                  <span className="font-mono text-xs">{orderStatus.id}</span>
+                  <span className="text-neutral-500 font-medium">ID Pesanan</span>
+                  <span className="font-mono text-xs text-neutral-400">{orderStatus.id}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-500">Pembayaran</span>
-                  <span className="font-bold uppercase">{orderStatus.payment_method} ({orderStatus.payment_status})</span>
+                  <span className="text-neutral-500 font-medium">Metode Pembayaran</span>
+                  <span className="font-bold uppercase text-orange-600">{orderStatus.payment_method}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-neutral-500 font-medium">Status Pembayaran</span>
+                  <span className={cn(
+                    "font-bold uppercase",
+                    orderStatus.payment_status === 'paid' ? "text-green-600" : "text-red-500"
+                  )}>{orderStatus.payment_status}</span>
                 </div>
                 <div className="flex justify-between text-xl font-bold border-t pt-3">
                   <span>Total</span>
-                  <span className="text-orange-600">{formatCurrency(orderStatus.total_amount)}</span>
+                  <span className="text-orange-600">{formatCurrency(Number(orderStatus.total_amount))}</span>
                 </div>
              </div>
 
               {orderStatus.payment_method === 'qris' && orderStatus.payment_status === 'unpaid' && (
                <div className="bg-neutral-50 p-6 rounded-2xl border-2 border-dashed border-neutral-200">
-                  <p className="text-xs font-bold mb-4">SILAKAN SCAN UNTUK MEMBAYAR</p>
-                  <div className="bg-white p-4 inline-block rounded-xl shadow-inner relative">
+                  <p className="text-xs font-black mb-4 uppercase text-neutral-400">Silakan scan untuk membayar</p>
+                  <div className="bg-white p-6 inline-block rounded-3xl shadow-inner relative">
                     {isQRLoading ? (
                       <div className="w-[200px] h-[200px] flex items-center justify-center">
                         <div className="w-8 h-8 border-4 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
@@ -274,21 +311,28 @@ export default function UserView() {
                       <QRCodeSVG 
                         value={dynamicQR || generateDynamicQRIS(qrisBase, Number(orderStatus.total_amount))} 
                         size={200} 
+                        level="H"
                       />
                     )}
                   </div>
-                  <p className="mt-4 text-[10px] text-neutral-400 font-bold max-w-[200px] mx-auto break-all bg-white p-2 rounded border uppercase text-center">
-                    {orderStatus.id.split('-')[0]} - {formatCurrency(Number(orderStatus.total_amount))}
+                  <div className="mt-4 bg-white p-3 rounded-xl border border-neutral-200">
+                    <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mb-1">Total yang harus dibayar</p>
+                    <p className="font-black text-lg text-neutral-900">{formatCurrency(Number(orderStatus.total_amount))}</p>
+                  </div>
+                  <p className="mt-4 text-xs text-neutral-500 italic font-medium leading-relaxed">
+                    Bisa bayar pakai OVO, Dana, GoPay, ShopeePay, atau aplikasi Bank. Pesanan akan diproses otomatis setelah pembayaran terkonfirmasi.
                   </p>
-                  <p className="mt-4 text-xs text-neutral-400 italic font-medium">Bisa bayar pakai OVO, Dana, GoPay, ShopeePay, dll.</p>
-                  <p className="mt-2 text-[8px] text-neutral-300 uppercase font-black">Powered by Warunk Digital & V-Tech API</p>
+                  <div className="mt-4 flex items-center justify-center gap-2 grayscale brightness-110 opacity-50">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/a/a2/Logo_QRIS.svg" alt="QRIS" className="h-4" />
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/3/39/GPN_Logo.svg" alt="GPN" className="h-4" />
+                  </div>
                </div>
              )}
           </div>
 
           <button 
             onClick={() => setOrderStatus(null)}
-            className="w-full bg-orange-600 text-white py-4 rounded-2xl font-bold shadow-lg"
+            className="w-full bg-orange-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-orange-100 hover:scale-[1.01] active:scale-95 transition-all"
           >
             Kembali ke Menu
           </button>
@@ -307,15 +351,15 @@ export default function UserView() {
             </div>
             <div>
               <h1 className="text-lg font-bold leading-none">Meja {selectedTable.table_number}</h1>
-              <p className="text-xs text-neutral-500 mt-1">Warunk Digital Menu</p>
+              <p className="text-xs text-neutral-500 mt-1 uppercase font-black tracking-widest">Warunk Digital</p>
             </div>
           </div>
           
           <div className="bg-neutral-100 p-1 rounded-full flex">
-            <button className="px-4 py-2 bg-white rounded-full shadow-sm text-sm font-bold">Menu</button>
+            <button className="px-5 py-2 bg-white rounded-full shadow-sm text-sm font-bold">Menu</button>
             <button 
               onClick={() => setIsCheckStatusOpen(true)}
-              className="px-4 py-2 text-neutral-500 text-sm font-medium"
+              className="px-5 py-2 text-neutral-500 text-sm font-bold hover:text-neutral-900 transition-colors"
             >
               Status
             </button>
@@ -330,7 +374,7 @@ export default function UserView() {
           <input 
             type="text" 
             placeholder="Cari menu favoritmu..." 
-            className="w-full bg-white border-0 ring-1 ring-neutral-200 focus:ring-2 focus:ring-orange-500 py-4 pl-12 pr-4 rounded-2xl transition-all shadow-sm"
+            className="w-full bg-white border-0 ring-1 ring-neutral-200 focus:ring-2 focus:ring-orange-500 py-5 pl-12 pr-4 rounded-3xl transition-all shadow-sm outline-none"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -341,8 +385,8 @@ export default function UserView() {
           <button
             onClick={() => setActiveCategory('all')}
             className={cn(
-              "px-6 py-3 rounded-full font-bold whitespace-nowrap transition-all",
-              activeCategory === 'all' ? "bg-orange-600 text-white shadow-lg shadow-orange-200" : "bg-white text-neutral-500 border border-neutral-200"
+              "px-8 py-3 rounded-full font-bold whitespace-nowrap transition-all uppercase text-sm tracking-widest",
+              activeCategory === 'all' ? "bg-orange-600 text-white shadow-lg shadow-orange-200 border-orange-600" : "bg-white text-neutral-500 border border-neutral-200"
             )}
           >
             Semua
@@ -352,8 +396,8 @@ export default function UserView() {
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
               className={cn(
-                "px-6 py-3 rounded-full font-bold whitespace-nowrap transition-all",
-                activeCategory === cat.id ? "bg-orange-600 text-white shadow-lg shadow-orange-200" : "bg-white text-neutral-500 border border-neutral-200"
+                "px-8 py-3 rounded-full font-bold whitespace-nowrap transition-all uppercase text-sm tracking-widest",
+                activeCategory === cat.id ? "bg-orange-600 text-white shadow-lg shadow-orange-200 border-orange-600" : "bg-white text-neutral-500 border border-neutral-200"
               )}
             >
               {cat.name}
@@ -362,7 +406,7 @@ export default function UserView() {
         </div>
 
         {/* Menu Items */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-8">
           <AnimatePresence mode="popLayout">
             {filteredItems.map(item => (
               <motion.div
@@ -371,52 +415,55 @@ export default function UserView() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group border border-neutral-100"
+                className="bg-white rounded-[40px] overflow-hidden shadow-sm hover:shadow-xl transition-all group border border-neutral-100 flex flex-col h-full"
               >
                 <div className="relative aspect-[4/3] overflow-hidden">
                   <img 
                     src={item.image_url || `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&auto=format&fit=crop`} 
                     alt={item.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />
                   {!item.is_available && (
-                    <div className="absolute inset-0 bg-neutral-900/60 backdrop-blur-[2px] flex items-center justify-center">
-                      <span className="text-white font-black text-lg py-2 px-6 border-4 border-white rotate-[-12deg]">HABIS</span>
+                    <div className="absolute inset-0 bg-neutral-900/40 backdrop-blur-[4px] flex items-center justify-center">
+                      <span className="text-white font-black text-2xl py-3 px-8 border-4 border-white -rotate-12 uppercase tracking-tighter">HABIS</span>
                     </div>
                   )}
-                </div>
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-bold text-lg text-neutral-900">{item.name}</h3>
-                    <span className="text-orange-600 font-black">{formatCurrency(item.price)}</span>
+                  <div className="absolute bottom-4 right-4">
+                    <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-xl font-black text-orange-600 italic">
+                      {formatCurrency(Number(item.price))}
+                    </div>
                   </div>
-                  <p className="text-neutral-500 text-sm mb-6 line-clamp-2 h-10">{item.description}</p>
+                </div>
+                <div className="p-8 flex flex-col flex-1">
+                  <h3 className="font-bold text-xl text-neutral-900 mb-2 leading-tight">{item.name}</h3>
+                  <p className="text-neutral-500 text-sm mb-8 line-clamp-3 leading-relaxed flex-1">{item.description}</p>
                   
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-neutral-400">
-                      Stok: {item.stock_quantity > 0 ? item.stock_quantity : 'Habis'}
+                  <div className="flex items-center justify-between mt-auto">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase text-neutral-400 tracking-widest mb-1">Tersedia</span>
+                        <span className="text-sm font-bold text-neutral-900">{item.stock_quantity > 0 ? `${item.stock_quantity} Porsi` : 'Habis'}</span>
                     </div>
                     {item.is_available && item.stock_quantity > 0 ? (
-                      <div className="flex items-center bg-neutral-100 rounded-full p-1">
+                      <div className="flex items-center bg-neutral-50 rounded-2xl p-1 shadow-inner border border-neutral-100">
                         <button 
                           onClick={() => removeFromCart(item.id)}
-                          className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-neutral-600 shadow-sm disabled:opacity-50"
+                          className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-neutral-600 shadow-sm hover:bg-neutral-50 transition-colors disabled:opacity-30"
                           disabled={!cart.find(i => i.menuItem.id === item.id)}
                         >
-                          <Minus className="w-4 h-4" />
+                          <Minus className="w-5 h-5" />
                         </button>
-                        <span className="w-10 text-center font-bold text-neutral-900">
+                        <span className="w-12 text-center font-black text-lg text-neutral-900 italic">
                           {cart.find(i => i.menuItem.id === item.id)?.quantity || 0}
                         </span>
                         <button 
                           onClick={() => addToCart(item)}
-                          className="w-8 h-8 rounded-full bg-orange-600 flex items-center justify-center text-white shadow-sm"
+                          className="w-10 h-10 rounded-xl bg-orange-600 flex items-center justify-center text-white shadow-xl shadow-orange-200 hover:bg-orange-500 transition-colors"
                         >
-                          <Plus className="w-4 h-4" />
+                          <Plus className="w-5 h-5" />
                         </button>
                       </div>
                     ) : (
-                      <button disabled className="bg-neutral-100 text-neutral-400 px-6 py-2 rounded-full text-sm font-bold">
+                      <button disabled className="bg-neutral-100 text-neutral-400 px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest">
                         Unavailable
                       </button>
                     )}
@@ -437,53 +484,53 @@ export default function UserView() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsCartOpen(false)}
-              className="fixed inset-0 bg-black/60 z-[100] backdrop-blur-sm"
+              className="fixed inset-0 bg-black/70 z-[100] backdrop-blur-md"
             />
             <motion.div 
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto bg-white rounded-t-[40px] z-[101] max-h-[85vh] overflow-hidden flex flex-col shadow-2xl"
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto bg-white rounded-t-[50px] z-[101] max-h-[90vh] overflow-hidden flex flex-col shadow-[0_-20px_50px_rgba(0,0,0,0.2)]"
             >
-              <div className="p-8 pb-4 flex items-center justify-between border-b border-neutral-100">
+              <div className="p-10 pb-6 flex items-center justify-between border-b border-neutral-100">
                 <div>
-                  <h2 className="text-2xl font-black text-neutral-900 italic uppercase">Keranjang</h2>
-                  <p className="text-neutral-400 text-sm font-medium">Meja {selectedTable.table_number}</p>
+                  <h2 className="text-3xl font-black text-neutral-900 italic uppercase leading-none">Pesanan</h2>
+                  <p className="text-neutral-400 text-sm font-bold mt-2 uppercase tracking-widest">Meja {selectedTable.table_number}</p>
                 </div>
                 <button 
                   onClick={() => setIsCartOpen(false)}
-                  className="p-3 bg-neutral-100 rounded-2xl hover:bg-neutral-200 transition-colors"
+                  className="w-14 h-14 bg-neutral-100 rounded-3xl flex items-center justify-center hover:bg-neutral-200 transition-all hover:scale-90"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-8 h-8" />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-8 space-y-6">
+              <div className="flex-1 overflow-y-auto p-10 space-y-8 scrollbar-hide">
                 {cart.length === 0 ? (
-                    <div className="text-center py-20">
-                        <div className="w-20 h-20 bg-neutral-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <ShoppingCart className="w-10 h-10 text-neutral-200" />
+                    <div className="text-center py-24 opacity-20">
+                        <div className="w-32 h-32 bg-neutral-50 rounded-full flex items-center justify-center mx-auto mb-8 border-4 border-dashed border-neutral-200">
+                            <ShoppingCart className="w-16 h-16 text-neutral-400" />
                         </div>
-                        <p className="text-neutral-400 font-bold">Keranjang kosong</p>
+                        <p className="text-2xl font-black italic uppercase tracking-tighter">Keranjang Kosong</p>
                     </div>
                 ) : (
                     cart.map(item => (
-                        <div key={item.menuItem.id} className="flex items-center gap-4 group">
-                          <div className="w-20 h-20 rounded-2xl overflow-hidden bg-neutral-100">
+                        <div key={item.menuItem.id} className="flex items-center gap-6 group">
+                          <div className="w-24 h-24 rounded-3xl overflow-hidden bg-neutral-100 shadow-inner">
                             <img src={item.menuItem.image_url} alt={item.menuItem.name} className="w-full h-full object-cover" />
                           </div>
                           <div className="flex-1">
-                            <h4 className="font-bold text-neutral-900">{item.menuItem.name}</h4>
-                            <p className="text-sm font-black text-orange-600">{formatCurrency(item.menuItem.price)}</p>
+                            <h4 className="font-bold text-neutral-900 text-lg leading-tight mb-1">{item.menuItem.name}</h4>
+                            <p className="font-black text-orange-600 italic">{formatCurrency(Number(item.menuItem.price))}</p>
                           </div>
-                          <div className="flex items-center bg-neutral-50 p-1 rounded-xl">
-                            <button onClick={() => removeFromCart(item.menuItem.id)} className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
-                                <Minus className="w-4 h-4" />
+                          <div className="flex items-center bg-neutral-50 p-1.5 rounded-2xl border border-neutral-100 shadow-inner">
+                            <button onClick={() => removeFromCart(item.menuItem.id)} className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm hover:scale-90 transition-transform">
+                                <Minus className="w-5 h-5" />
                             </button>
-                            <span className="w-10 text-center font-bold">{item.quantity}</span>
-                            <button onClick={() => addToCart(item.menuItem)} className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
-                                <Plus className="w-4 h-4" />
+                            <span className="w-12 text-center font-black text-lg italic">{item.quantity}</span>
+                            <button onClick={() => addToCart(item.menuItem)} className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm hover:scale-90 transition-transform">
+                                <Plus className="w-5 h-5" />
                             </button>
                           </div>
                         </div>
@@ -492,35 +539,35 @@ export default function UserView() {
               </div>
 
               {cart.length > 0 && (
-                <div className="p-8 bg-neutral-50 border-t border-neutral-100 space-y-6">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-neutral-500 font-medium">
-                        <span>Pilih Metode Pembayaran</span>
-                    </div>
+                <div className="p-10 bg-neutral-950 text-white rounded-t-[40px] space-y-8">
+                  <div className="space-y-4">
+                    <p className="text-neutral-500 text-[10px] font-black uppercase tracking-[0.2em] text-center">Pilih Metode Pembayaran</p>
                     <div className="grid grid-cols-2 gap-4">
                         <button 
                             onClick={() => handleCheckout('cash')}
-                            className="p-4 bg-white border border-neutral-200 rounded-2xl font-bold flex flex-col items-center gap-2 hover:border-orange-500 hover:text-orange-600 transition-all shadow-sm"
+                            className="p-6 bg-white/5 border border-white/10 rounded-[28px] font-black flex flex-col items-center gap-2 hover:bg-white/10 hover:border-orange-500 transition-all uppercase tracking-widest text-[10px]"
                         >
-                            <UtensilsCrossed className="w-6 h-6" />
+                            <UtensilsCrossed className="w-6 h-6 text-orange-600 mb-1" />
                             Bayar Tunai
                         </button>
                         <button 
                             onClick={() => handleCheckout('qris')}
-                            className="p-4 bg-white border border-neutral-200 rounded-2xl font-bold flex flex-col items-center gap-2 hover:border-orange-500 hover:text-orange-600 transition-all shadow-sm"
+                            className="p-6 bg-white/5 border border-white/10 rounded-[28px] font-black flex flex-col items-center gap-2 hover:bg-white/10 hover:border-orange-500 transition-all uppercase tracking-widest text-[10px]"
                         >
-                            <CheckCircle2 className="w-6 h-6" />
+                            <CheckCircle2 className="w-6 h-6 text-orange-600 mb-1" />
                             Bayar QRIS
                         </button>
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-center bg-neutral-900 p-6 rounded-[24px] text-white shadow-2xl">
-                    <div>
-                      <p className="text-neutral-400 text-xs font-bold uppercase tracking-widest mb-1">Total Pembayaran</p>
-                      <h3 className="text-3xl font-black italic">{formatCurrency(cartTotal)}</h3>
+                  <div className="flex justify-between items-center px-4">
+                    <div className="space-y-1">
+                      <p className="text-neutral-500 text-[10px] font-black uppercase tracking-[0.2em]">Total Tagihan</p>
+                      <h3 className="text-4xl font-black italic tracking-tighter">{formatCurrency(cartTotal)}</h3>
                     </div>
-                    <ChevronRight className="w-8 h-8 text-neutral-500" />
+                    <div className="w-16 h-16 bg-orange-600 rounded-[24px] flex items-center justify-center shadow-2xl shadow-orange-600/40">
+                      <ChevronRight className="w-10 h-10" />
+                    </div>
                   </div>
                 </div>
               )}
@@ -532,29 +579,66 @@ export default function UserView() {
       {/* Floating Cart Button */}
       {cart.length > 0 && !isCartOpen && (
         <motion.div 
-          initial={{ y: 100 }}
+          initial={{ y: 200 }}
           animate={{ y: 0 }}
-          className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4"
+          className="fixed bottom-8 left-0 right-0 z-50 flex justify-center px-4"
         >
           <button 
             onClick={() => setIsCartOpen(true)}
-            className="w-full bg-neutral-900 text-white p-4 rounded-[28px] shadow-2xl flex items-center justify-between hover:scale-105 active:scale-95 transition-all"
+            className="w-full max-w-sm bg-neutral-900 text-white p-5 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-between hover:scale-[1.02] active:scale-95 transition-all outline-none"
           >
-            <div className="flex items-center gap-4">
-              <div className="bg-orange-600 w-12 h-12 rounded-2xl flex items-center justify-center font-black italic">
+            <div className="flex items-center gap-5">
+              <div className="bg-orange-600 w-14 h-14 rounded-[22px] flex items-center justify-center font-black text-2xl italic shadow-lg shadow-orange-600/20 translate-x-[-10px]">
                 {cart.reduce((s, i) => s + i.quantity, 0)}
               </div>
-              <div className="text-left leading-tight">
-                <h4 className="font-bold">Lihat Keranjang</h4>
-                <p className="text-xs text-neutral-400 font-medium tracking-wide italic">Selesaikan pesananmu</p>
+              <div className="text-left leading-none">
+                <h4 className="font-black italic uppercase tracking-wider text-sm">Lihat Pesanan</h4>
+                <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-1.5 italic">Siap untuk checkout?</p>
               </div>
             </div>
             <div className="text-right">
-              <p className="font-black text-lg italic">{formatCurrency(cartTotal)}</p>
+              <p className="font-black text-2xl italic italic tracking-tighter text-orange-500">{formatCurrency(cartTotal)}</p>
             </div>
           </button>
         </motion.div>
       )}
+
+      {isCheckStatusOpen && (
+          <div className="fixed inset-0 bg-black/70 z-[100] backdrop-blur-md flex items-center justify-center p-4">
+            <motion.div 
+               initial={{ scale: 0.9, opacity: 0 }}
+               animate={{ scale: 1, opacity: 1 }}
+               className="bg-white p-8 rounded-[40px] w-full max-w-md shadow-2xl"
+            >
+              <div className="w-20 h-20 bg-orange-100 rounded-[28px] flex items-center justify-center mb-6">
+                <Clock className="w-10 h-10 text-orange-600" />
+              </div>
+              <h2 className="text-2xl font-black italic uppercase tracking-tight mb-2 text-neutral-900">Cek Status Pesanan</h2>
+              <p className="text-neutral-500 text-sm font-medium mb-8">Masukkan ID Pesanan yang Anda terima sebelumnya.</p>
+              
+              <input 
+                className="w-full bg-neutral-50 border-2 border-neutral-100 p-5 rounded-2xl mb-8 focus:ring-4 focus:ring-orange-100 focus:border-orange-500 outline-none transition-all font-mono text-sm"
+                placeholder="cth: 550e8400-e29b-..."
+                value={orderIdInput}
+                onChange={e => setOrderIdInput(e.target.value)}
+              />
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setIsCheckStatusOpen(false)}
+                  className="flex-1 bg-neutral-100 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-neutral-200 transition-colors"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={checkOrderById}
+                  className="flex-1 bg-orange-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-orange-100 hover:scale-105 active:scale-95 transition-all"
+                >
+                  Lanjut
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
     </div>
   );
 }
