@@ -28,18 +28,21 @@ import * as XLSX from 'xlsx';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 export default function AdminView() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'menu' | 'orders' | 'tables' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'menu' | 'categories' | 'orders' | 'tables' | 'settings'>('dashboard');
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState({ start: format(new Date(), 'yyyy-MM-dd'), end: format(new Date(), 'yyyy-MM-dd') });
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [orderDetails, setOrderDetails] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [qrisPayload, setQrisPayload] = useState('');
   const [vtechApiKey, setVtechApiKey] = useState('');
@@ -132,10 +135,60 @@ export default function AdminView() {
     fetchData();
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      setUploading(true);
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('menu-photos')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        if (uploadError.message.includes('bucket not found')) {
+          // Attempt to create bucket would happen here, but for now we expect it to exist
+          // or we inform the user to create it in Supabase dashboard if possible.
+          // Alternatively, we can use a library to handle it.
+          alert('Bucket "menu-photos" tidak ditemukan. Silakan buat bucket dengan nama "menu-photos" di Supabase Storage Dashboard.');
+          return;
+        }
+        throw uploadError;
+      }
+
+      const { data } = supabase.storage
+        .from('menu-photos')
+        .getPublicUrl(filePath);
+
+      return data.publicUrl;
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const saveMenuItem = async (e: React.FormEvent) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
+    const fileInput = form.querySelector('input[type="file"]') as HTMLInputElement;
+    
+    let imageUrl = editingItem?.image_url || '';
+    
+    if (fileInput.files?.[0]) {
+      const uploadedUrl = await handleFileUpload({ target: fileInput } as any);
+      if (uploadedUrl) imageUrl = uploadedUrl;
+    } else {
+      // If no new file but text URL provided
+      const textUrl = formData.get('image_url_text') as string;
+      if (textUrl) imageUrl = textUrl;
+    }
+
     const itemData = {
       name: formData.get('name') as string,
       description: formData.get('description') as string,
@@ -143,7 +196,7 @@ export default function AdminView() {
       category_id: formData.get('category_id') as string,
       is_available: formData.get('is_available') === 'on',
       stock_quantity: parseInt(formData.get('stock_quantity') as string),
-      image_url: formData.get('image_url') as string
+      image_url: imageUrl
     };
 
     if (editingItem) {
@@ -155,6 +208,33 @@ export default function AdminView() {
     setIsModalOpen(false);
     setEditingItem(null);
     fetchData();
+  };
+
+  const saveCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const formData = new FormData(form);
+    const catData = {
+      name: formData.get('name') as string,
+      display_order: parseInt(formData.get('display_order') as string || '0')
+    };
+
+    if (editingCategory) {
+      await supabase.from('categories').update(catData).eq('id', editingCategory.id);
+    } else {
+      await supabase.from('categories').insert(catData);
+    }
+
+    setIsCategoryModalOpen(false);
+    setEditingCategory(null);
+    fetchData();
+  };
+
+  const deleteCategory = async (id: string) => {
+    if (confirm('Hapus kategori ini? Item menu di kategori ini mungkin akan bermasalah.')) {
+      await supabase.from('categories').delete().eq('id', id);
+      fetchData();
+    }
   };
 
   const deleteMenuItem = async (id: string) => {
@@ -222,7 +302,8 @@ export default function AdminView() {
 
         <nav className="flex-1 px-4 space-y-1">
           <NavItem active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<LayoutDashboard />} label="Dashboard" />
-          <NavItem active={activeTab === 'menu'} onClick={() => setActiveTab('menu')} icon={<Utensils />} label="Menu" />
+          <NavItem active={activeTab === 'menu'} onClick={() => setActiveTab('menu')} icon={<Utensils />} label="Menu Items" />
+          <NavItem active={activeTab === 'categories'} onClick={() => setActiveTab('categories')} icon={<Filter />} label="Categories" />
           <NavItem active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} icon={<ShoppingBag />} label="Orders" />
           <NavItem active={activeTab === 'tables'} onClick={() => setActiveTab('tables')} icon={<TableIcon />} label="Tables" />
           <NavItem active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} icon={<SettingsIcon />} label="Settings" />
@@ -305,6 +386,49 @@ export default function AdminView() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'categories' && (
+          <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden">
+            <div className="p-8 border-b border-neutral-50 flex items-center justify-between">
+              <h3 className="text-xl font-bold">Category Management</h3>
+              <button 
+                onClick={() => { setEditingCategory(null); setIsCategoryModalOpen(true); }}
+                className="bg-orange-600 text-white p-4 px-8 rounded-2xl font-bold flex items-center gap-2 hover:bg-orange-500 transition-all shadow-lg shadow-orange-100"
+              >
+                <Plus className="w-5 h-5" />
+                Add New Category
+              </button>
+            </div>
+
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-neutral-50 text-neutral-400 text-xs font-black uppercase tracking-wider">
+                  <th className="p-8">Name</th>
+                  <th className="p-8">Order</th>
+                  <th className="p-8">Menu Count</th>
+                  <th className="p-8">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-50">
+                {categories.map(cat => (
+                  <tr key={cat.id} className="hover:bg-neutral-50/50 transition-colors group">
+                    <td className="p-8 font-bold text-neutral-900">{cat.name}</td>
+                    <td className="p-8 font-medium text-neutral-500">{cat.display_order}</td>
+                    <td className="p-8 text-neutral-500">
+                      {menuItems.filter(i => i.category_id === cat.id).length} items
+                    </td>
+                    <td className="p-8">
+                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => { setEditingCategory(cat); setIsCategoryModalOpen(true); }} className="p-3 bg-white border border-neutral-100 rounded-xl shadow-sm hover:text-blue-600 transition-all"><Edit3 className="w-4 h-4" /></button>
+                        <button onClick={() => deleteCategory(cat.id)} className="p-3 bg-white border border-neutral-100 rounded-xl shadow-sm hover:text-red-600 transition-all"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
 
@@ -818,8 +942,26 @@ export default function AdminView() {
                  </div>
 
                  <div>
-                    <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Image URL</label>
-                    <input name="image_url" defaultValue={editingItem?.image_url} placeholder="https://..." className="w-full bg-neutral-50 border-0 p-4 rounded-2xl focus:ring-2 focus:ring-orange-500" />
+                    <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Image</label>
+                    <div className="flex gap-4">
+                      <div className="flex-1">
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          className="w-full bg-neutral-50 border-0 p-4 rounded-2xl focus:ring-2 focus:ring-orange-500" 
+                        />
+                        <p className="text-[10px] text-neutral-400 mt-1 italic">Click to upload from device</p>
+                      </div>
+                      <div className="flex-1">
+                        <input 
+                          name="image_url_text" 
+                          defaultValue={editingItem?.image_url} 
+                          placeholder="Or paste URL (https://...)" 
+                          className="w-full bg-neutral-50 border-0 p-4 rounded-2xl focus:ring-2 focus:ring-orange-500" 
+                        />
+                      </div>
+                    </div>
+                    {uploading && <p className="text-xs text-orange-600 font-bold mt-2 animate-pulse">Uploading photo...</p>}
                  </div>
 
                  <div>
@@ -913,6 +1055,40 @@ export default function AdminView() {
                   Close Details
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Category Edit Modal */}
+      <AnimatePresence>
+        {isCategoryModalOpen && (
+          <div className="fixed inset-0 bg-black/60 z-[110] backdrop-blur-md flex items-center justify-center p-4">
+            <motion.div 
+               initial={{ scale: 0.9, opacity: 0 }}
+               animate={{ scale: 1, opacity: 1 }}
+               className="bg-white rounded-[40px] w-full max-w-lg overflow-hidden flex flex-col"
+            >
+              <div className="p-8 border-b border-neutral-50 flex items-center justify-between">
+                <h2 className="text-2xl font-black italic uppercase">
+                    {editingCategory ? 'Edit Category' : 'New Category'}
+                </h2>
+                <button onClick={() => setIsCategoryModalOpen(false)} className="p-3 bg-neutral-100 rounded-2xl"><XCircle className="w-6 h-6" /></button>
+              </div>
+
+              <form onSubmit={saveCategory} className="p-10 space-y-6">
+                  <div>
+                    <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Category Name</label>
+                    <input name="name" required defaultValue={editingCategory?.name} className="w-full bg-neutral-50 border-0 p-4 rounded-2xl focus:ring-2 focus:ring-orange-500" placeholder="e.g. Minuman" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Display Order</label>
+                    <input name="display_order" type="number" defaultValue={editingCategory?.display_order || 0} className="w-full bg-neutral-50 border-0 p-4 rounded-2xl focus:ring-2 focus:ring-orange-500" />
+                  </div>
+                  <button className="w-full bg-orange-600 text-white p-5 rounded-[24px] font-black uppercase tracking-widest shadow-xl shadow-orange-100 mt-4">
+                    Save Category
+                  </button>
+              </form>
             </motion.div>
           </div>
         )}
