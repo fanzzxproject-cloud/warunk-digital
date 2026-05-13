@@ -31,10 +31,40 @@ export default function UserView() {
   const [loading, setLoading] = useState(true);
   const [orderIdInput, setOrderIdInput] = useState('');
   const [qrisBase, setQrisBase] = useState('');
+  const [dynamicQR, setDynamicQR] = useState('');
+  const [isQRLoading, setIsQRLoading] = useState(false);
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (orderStatus?.payment_method === 'qris' && orderStatus?.payment_status === 'unpaid' && qrisBase) {
+      getDynamicQR(qrisBase, Number(orderStatus.total_amount));
+    }
+  }, [orderStatus, qrisBase]);
+
+  async function getDynamicQR(base: string, amount: number) {
+    setIsQRLoading(true);
+    try {
+      // Trying the api.vtech.biz.id endpoint
+      // Using a proxy or direct fetch depending on CORS. 
+      // For now, attempting direct fetch.
+      const response = await fetch(`https://api.vtech.biz.id/qris/api.php?qris=${base}&nominal=${amount}`);
+      const data = await response.text();
+      if (data && data.startsWith('00')) {
+        setDynamicQR(data);
+      } else {
+        // Fallback to local generation if API fails or returns invalid data
+        setDynamicQR(generateDynamicQRIS(base, amount));
+      }
+    } catch (err) {
+      console.error('API QRIS Error:', err);
+      setDynamicQR(generateDynamicQRIS(base, amount));
+    } finally {
+      setIsQRLoading(false);
+    }
+  }
 
   async function fetchData() {
     setLoading(true);
@@ -236,19 +266,26 @@ export default function UserView() {
                 </div>
              </div>
 
-             {orderStatus.payment_method === 'qris' && orderStatus.payment_status === 'unpaid' && (
+              {orderStatus.payment_method === 'qris' && orderStatus.payment_status === 'unpaid' && (
                <div className="bg-neutral-50 p-6 rounded-2xl border-2 border-dashed border-neutral-200">
                   <p className="text-xs font-bold mb-4">SILAKAN SCAN UNTUK MEMBAYAR</p>
-                  <div className="bg-white p-4 inline-block rounded-xl shadow-inner">
-                    <QRCodeSVG 
-                      value={generateDynamicQRIS(qrisBase, Number(orderStatus.total_amount))} 
-                      size={200} 
-                    />
+                  <div className="bg-white p-4 inline-block rounded-xl shadow-inner relative">
+                    {isQRLoading ? (
+                      <div className="w-[200px] h-[200px] flex items-center justify-center">
+                        <div className="w-8 h-8 border-4 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    ) : (
+                      <QRCodeSVG 
+                        value={dynamicQR || generateDynamicQRIS(qrisBase, Number(orderStatus.total_amount))} 
+                        size={200} 
+                      />
+                    )}
                   </div>
-                  <p className="mt-4 text-[10px] text-neutral-400 font-bold max-w-[200px] mx-auto break-all bg-white p-2 rounded border uppercase">
+                  <p className="mt-4 text-[10px] text-neutral-400 font-bold max-w-[200px] mx-auto break-all bg-white p-2 rounded border uppercase text-center">
                     {orderStatus.id.split('-')[0]} - {formatCurrency(Number(orderStatus.total_amount))}
                   </p>
-                  <p className="mt-4 text-xs text-neutral-400 italic">Pesanan akan diproses setelah pembayaran terkonfirmasi.</p>
+                  <p className="mt-4 text-xs text-neutral-400 italic font-medium">Bisa bayar pakai OVO, Dana, GoPay, ShopeePay, dll.</p>
+                  <p className="mt-2 text-[8px] text-neutral-300 uppercase font-black">Powered by Warunk Digital & V-Tech API</p>
                </div>
              )}
           </div>
