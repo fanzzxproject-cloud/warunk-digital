@@ -78,3 +78,18 @@ export function generateDynamicQRIS(basePayload: string, amount: number) {
   payload += '6304';
   return payload + crc16(payload);
 }
+
+export function calculateQRISFee(amount: number, enabled: string, type: string, value: string): number {
+  if (enabled !== 'y') return 0;
+  
+  const val = parseFloat(value);
+  if (isNaN(val)) return 0;
+
+  if (type === 'p') {
+    // Percentage fee
+    return Math.floor(amount * (val / 100));
+  } else {
+    // Flat fee (Rupiah)
+    return Math.floor(val);
+  }
+}
