@@ -38,6 +38,19 @@ export default function UserView() {
 
   useEffect(() => {
     fetchData();
+    
+    // Auto select table from URL if present
+    const params = new URLSearchParams(window.location.search);
+    const tableId = params.get('table');
+    if (tableId) {
+      const checkTable = async () => {
+        const { data } = await supabase.from('restaurant_tables').select('*').eq('id', tableId).single();
+        if (data && data.status === 'available') {
+          setSelectedTable(data);
+        }
+      };
+      checkTable();
+    }
   }, []);
 
   useEffect(() => {
@@ -341,6 +354,36 @@ export default function UserView() {
                 </div>
              </div>
 
+             {/* Guide Section */}
+             <div className="bg-orange-50 p-6 rounded-2xl text-left border border-orange-100">
+               <h4 className="text-sm font-black uppercase text-orange-600 tracking-widest mb-3 flex items-center gap-2">
+                 <CheckCircle2 className="w-4 h-4" /> Panduan Pembayaran
+               </h4>
+               <ul className="space-y-2 text-xs text-orange-900/80 font-medium leading-relaxed">
+                 {orderStatus.payment_method === 'cash' ? (
+                   <li className="flex gap-2">
+                      <span className="shrink-0">•</span>
+                      <span>Silakan lakukan pembayaran di kasir dengan menyebutkan nomor meja atau menunjukkan ID Pesanan ini.</span>
+                   </li>
+                 ) : (
+                   <>
+                     <li className="flex gap-2">
+                        <span className="shrink-0">•</span>
+                        <span>Silakan scan QRIS di bawah dan selesaikan pembayaran.</span>
+                     </li>
+                     <li className="flex gap-2">
+                        <span className="shrink-0">•</span>
+                        <span>Simpan bukti transfer sebagai cadangan jika sistem belum terupdate otomatis.</span>
+                     </li>
+                   </>
+                 )}
+                 <li className="flex gap-2">
+                   <span className="shrink-0">•</span>
+                   <span>PENTING: Tunjukkan <b>Struk Pesanan</b> {orderStatus.payment_method === 'qris' ? 'dan **Bukti Bayar** QRIS' : ''} kepada petugas saat pesanan diantarkan.</span>
+                 </li>
+               </ul>
+             </div>
+
               {orderStatus.payment_method === 'qris' && orderStatus.payment_status === 'unpaid' && (
                <div className="bg-neutral-50 p-6 rounded-2xl border-2 border-dashed border-neutral-200">
                   <p className="text-xs font-black mb-4 uppercase text-neutral-400">Silakan scan untuk membayar</p>
@@ -476,6 +519,7 @@ export default function UserView() {
                     src={item.image_url || `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&auto=format&fit=crop`} 
                     alt={item.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    referrerPolicy="no-referrer"
                   />
                   {!item.is_available && (
                     <div className="absolute inset-0 bg-neutral-900/40 backdrop-blur-[4px] flex items-center justify-center">
@@ -572,7 +616,7 @@ export default function UserView() {
                     cart.map(item => (
                         <div key={item.menuItem.id} className="flex items-center gap-6 group">
                           <div className="w-24 h-24 rounded-3xl overflow-hidden bg-neutral-100 shadow-inner">
-                            <img src={item.menuItem.image_url} alt={item.menuItem.name} className="w-full h-full object-cover" />
+                            <img src={item.menuItem.image_url} alt={item.menuItem.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           </div>
                           <div className="flex-1">
                             <h4 className="font-bold text-neutral-900 text-lg leading-tight mb-1">{item.menuItem.name}</h4>
@@ -613,6 +657,10 @@ export default function UserView() {
                         </button>
                     </div>
                   </div>
+
+                  <p className="text-[10px] text-neutral-500 font-bold text-center uppercase tracking-widest leading-relaxed px-4 opacity-50">
+                    Sediakan struk {qrisFee > 0 ? "dan bukti bayar " : ""}untuk ditunjukkan ke petugas.
+                  </p>
 
                   <div className="flex justify-between items-center px-4">
                     <div className="flex-1 space-y-1">
