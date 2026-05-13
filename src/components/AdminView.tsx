@@ -19,7 +19,8 @@ import {
   CreditCard,
   Banknote,
   MoreVertical,
-  ChevronRight
+  ChevronRight,
+  Menu
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { MenuItem, Category, Order, RestaurantTable } from '../types';
@@ -30,6 +31,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 export default function AdminView() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'menu' | 'categories' | 'orders' | 'tables' | 'settings'>('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -308,22 +310,38 @@ export default function AdminView() {
 
   return (
     <div className="min-h-screen bg-neutral-50 flex">
+      {/* Mobile sidebar overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-neutral-900 text-white flex flex-col fixed h-full z-50">
-        <div className="p-8 flex items-center gap-3">
-          <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center">
-            <Utensils className="w-6 h-6" />
+      <aside className={cn(
+        "w-64 bg-neutral-900 text-white flex flex-col fixed h-full z-50 transition-transform duration-300",
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      )}>
+        <div className="p-8 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center shrink-0">
+              <Utensils className="w-6 h-6" />
+            </div>
+            <span className="text-xl font-black italic">Warunk Digital</span>
           </div>
-          <span className="text-xl font-black italic">Warunk Digital</span>
+          <button className="md:hidden" onClick={() => setIsSidebarOpen(false)}>
+            <XCircle className="w-6 h-6 text-neutral-400" />
+          </button>
         </div>
 
-        <nav className="flex-1 px-4 space-y-1">
-          <NavItem active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<LayoutDashboard />} label="Dashboard" />
-          <NavItem active={activeTab === 'menu'} onClick={() => setActiveTab('menu')} icon={<Utensils />} label="Menu Items" />
-          <NavItem active={activeTab === 'categories'} onClick={() => setActiveTab('categories')} icon={<Filter />} label="Categories" />
-          <NavItem active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} icon={<ShoppingBag />} label="Orders" />
-          <NavItem active={activeTab === 'tables'} onClick={() => setActiveTab('tables')} icon={<TableIcon />} label="Tables" />
-          <NavItem active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} icon={<SettingsIcon />} label="Settings" />
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
+          <NavItem active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }} icon={<LayoutDashboard />} label="Dashboard" />
+          <NavItem active={activeTab === 'menu'} onClick={() => { setActiveTab('menu'); setIsSidebarOpen(false); }} icon={<Utensils />} label="Menu Items" />
+          <NavItem active={activeTab === 'categories'} onClick={() => { setActiveTab('categories'); setIsSidebarOpen(false); }} icon={<Filter />} label="Categories" />
+          <NavItem active={activeTab === 'orders'} onClick={() => { setActiveTab('orders'); setIsSidebarOpen(false); }} icon={<ShoppingBag />} label="Orders" />
+          <NavItem active={activeTab === 'tables'} onClick={() => { setActiveTab('tables'); setIsSidebarOpen(false); }} icon={<TableIcon />} label="Tables" />
+          <NavItem active={activeTab === 'settings'} onClick={() => { setActiveTab('settings'); setIsSidebarOpen(false); }} icon={<SettingsIcon />} label="Settings" />
         </nav>
 
         <div className="p-4 mt-auto">
@@ -335,11 +353,19 @@ export default function AdminView() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 ml-64 p-8">
-        <header className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-black text-neutral-900 capitalize">{activeTab}</h1>
-            <p className="text-neutral-500">Welcome back, Admin</p>
+      <main className="flex-1 w-full md:ml-64 p-4 md:p-8 overflow-x-hidden">
+        <header className="flex justify-between items-start md:items-center mb-8 gap-4 flex-col md:flex-row">
+          <div className="flex items-center gap-4">
+            <button 
+              className="md:hidden p-2 bg-white rounded-xl shadow-sm border border-neutral-100 flex-shrink-0"
+              onClick={() => setIsSidebarOpen(true)}
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-black text-neutral-900 capitalize leading-none">{activeTab}</h1>
+              <p className="text-neutral-500 text-sm md:text-base mt-2">Welcome back, Admin</p>
+            </div>
           </div>
           
           <div className="flex items-center gap-4">
@@ -408,20 +434,21 @@ export default function AdminView() {
 
         {activeTab === 'categories' && (
           <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden">
-            <div className="p-8 border-b border-neutral-50 flex items-center justify-between">
+            <div className="p-4 md:p-8 border-b border-neutral-50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <h3 className="text-xl font-bold">Category Management</h3>
               <button 
                 onClick={() => { setEditingCategory(null); setIsCategoryModalOpen(true); }}
-                className="bg-orange-600 text-white p-4 px-8 rounded-2xl font-bold flex items-center gap-2 hover:bg-orange-500 transition-all shadow-lg shadow-orange-100"
+                className="bg-orange-600 text-white p-4 px-8 w-full md:w-auto justify-center rounded-2xl font-bold flex items-center gap-2 hover:bg-orange-500 transition-all shadow-lg shadow-orange-100"
               >
                 <Plus className="w-5 h-5" />
                 Add New Category
               </button>
             </div>
 
+            <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="bg-neutral-50 text-neutral-400 text-xs font-black uppercase tracking-wider">
+                <tr className="bg-neutral-50 text-neutral-400 text-xs font-black uppercase tracking-wider whitespace-nowrap">
                   <th className="p-8">Name</th>
                   <th className="p-8">Order</th>
                   <th className="p-8">Menu Count</th>
@@ -446,13 +473,14 @@ export default function AdminView() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
 
         {activeTab === 'menu' && (
           <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden">
-            <div className="p-8 border-b border-neutral-50 flex items-center justify-between">
-              <div className="relative w-96">
+            <div className="p-4 md:p-8 border-b border-neutral-50 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="relative w-full md:w-96">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 w-5 h-5" />
                 <input 
                   className="w-full bg-neutral-50 border-0 p-4 pl-12 rounded-2xl focus:ring-2 focus:ring-orange-500 transition-all"
@@ -463,16 +491,17 @@ export default function AdminView() {
               </div>
               <button 
                 onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
-                className="bg-orange-600 text-white p-4 px-8 rounded-2xl font-bold flex items-center gap-2 hover:bg-orange-500 transition-all shadow-lg shadow-orange-100"
+                className="bg-orange-600 text-white p-4 px-8 w-full md:w-auto justify-center rounded-2xl font-bold flex items-center gap-2 hover:bg-orange-500 transition-all shadow-lg shadow-orange-100"
               >
                 <Plus className="w-5 h-5" />
                 Add New Menu
               </button>
             </div>
 
+            <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="bg-neutral-50 text-neutral-400 text-xs font-black uppercase tracking-wider">
+                <tr className="bg-neutral-50 text-neutral-400 text-xs font-black uppercase tracking-wider whitespace-nowrap">
                   <th className="p-8">Details</th>
                   <th className="p-8">Category</th>
                   <th className="p-8">Price</th>
@@ -518,6 +547,7 @@ export default function AdminView() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
 
@@ -548,27 +578,27 @@ export default function AdminView() {
             </div>
 
             <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden">
-               <div className="p-6 border-b border-neutral-50 flex justify-between items-center bg-neutral-900 text-white">
-                  <div className="flex items-center gap-4">
-                    <h3 className="font-bold flex items-center gap-2">
-                        <ShoppingBag className="w-5 h-5 text-orange-500" />
-                        Live Order Stream
+               <div className="p-4 md:p-6 border-b border-neutral-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-neutral-900 text-white">
+                  <div className="flex items-center justify-between w-full md:w-auto gap-4">
+                    <h3 className="font-bold flex items-center gap-2 text-sm md:text-base whitespace-nowrap">
+                        <ShoppingBag className="w-5 h-5 text-orange-500 shrink-0" />
+                        Live Stream
                     </h3>
                     <button 
                         onClick={() => setIsKitchenMode(!isKitchenMode)}
                         className={cn(
-                            "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border-2",
+                            "px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border-2 whitespace-nowrap",
                             isKitchenMode ? "bg-orange-600 border-orange-600 text-white" : "border-white/20 text-white/60 hover:border-white/40"
                         )}
                     >
                         {isKitchenMode ? "View List" : "Kitchen Mode"}
                     </button>
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={exportToExcel} className="p-2 px-4 bg-white/10 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-white/20 transition-all active:scale-95">
+                  <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 hide-scrollbar">
+                    <button onClick={exportToExcel} className="p-2 px-4 w-full md:w-auto justify-center bg-white/10 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-white/20 transition-all active:scale-95 whitespace-nowrap">
                         <Download className="w-4 h-4" /> Export Excel
                     </button>
-                    <div className="flex bg-white/10 rounded-xl overflow-hidden border border-white/5">
+                    <div className="flex bg-white/10 rounded-xl overflow-x-auto border border-white/5 hide-scrollbar w-full md:w-auto shrink-0 hide-scrollbar">
                         {['all', 'pending', 'preparing', 'completed'].map((status) => (
                           <button 
                             key={status}
@@ -750,9 +780,9 @@ export default function AdminView() {
 
         {activeTab === 'tables' && (
           <div className="max-w-4xl bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden">
-            <div className="p-8 border-b border-neutral-50 flex items-center justify-between bg-neutral-900 text-white">
+            <div className="p-4 md:p-8 border-b border-neutral-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-neutral-900 text-white">
                <div>
-                 <h3 className="text-xl font-bold italic">Table Management</h3>
+                 <h3 className="text-lg md:text-xl font-bold italic">Table Management</h3>
                  <p className="text-neutral-400 text-xs">Manage active tables and availability</p>
                </div>
                <button 
@@ -862,7 +892,7 @@ export default function AdminView() {
                    />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-[10px] font-black uppercase mb-3 tracking-widest text-neutral-400">Fee Status</label>
                     <select 
