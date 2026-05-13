@@ -337,7 +337,7 @@ export default function AdminView() {
 
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
           <NavItem active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }} icon={<LayoutDashboard />} label="Dasbor" />
-          <NavItem active={activeTab === 'menu'} onClick={() => { setActiveTab('menu'); setIsSidebarOpen(false); }} icon={<Utensils />} label="Menu Makanan" />
+          <NavItem active={activeTab === 'menu'} onClick={() => { setActiveTab('menu'); setIsSidebarOpen(false); }} icon={<Utensils />} label="Menu" />
           <NavItem active={activeTab === 'categories'} onClick={() => { setActiveTab('categories'); setIsSidebarOpen(false); }} icon={<Filter />} label="Kategori" />
           <NavItem active={activeTab === 'orders'} onClick={() => { setActiveTab('orders'); setIsSidebarOpen(false); }} icon={<ShoppingBag />} label="Pesanan" />
           <NavItem active={activeTab === 'tables'} onClick={() => { setActiveTab('tables'); setIsSidebarOpen(false); }} icon={<TableIcon />} label="Meja" />
@@ -365,7 +365,7 @@ export default function AdminView() {
             <div>
               <h1 className="text-2xl md:text-3xl font-black text-neutral-900 capitalize leading-none">
                 {activeTab === 'dashboard' ? 'Dasbor' : 
-                 activeTab === 'menu' ? 'Menu Makanan' : 
+                 activeTab === 'menu' ? 'Menu' : 
                  activeTab === 'categories' ? 'Kategori' : 
                  activeTab === 'orders' ? 'Pesanan' : 
                  activeTab === 'tables' ? 'Meja' : 
@@ -821,41 +821,43 @@ export default function AdminView() {
                       table.status === 'available' ? "text-green-500" : table.status === 'reserved' ? "text-blue-500" : "text-orange-500"
                     )}>{table.status === 'available' ? 'Tersedia' : table.status === 'occupied' ? 'Terisi' : 'Dipesan'}</p>
                   </div>
-                  <div className="flex gap-2 w-full mt-2">
+                  <div className="flex flex-col gap-2 w-full mt-2">
                     <select 
                       value={table.status}
                       onChange={async (e) => {
                         await supabase.from('restaurant_tables').update({ status: e.target.value }).eq('id', table.id);
                         fetchData();
                       }}
-                      className="flex-1 bg-white border border-neutral-200 text-[10px] font-bold p-2 rounded-lg"
+                      className="w-full bg-white border border-neutral-200 text-[10px] font-bold p-2 rounded-lg"
                     >
                       <option value="available">Tersedia</option>
                       <option value="occupied">Terisi</option>
                       <option value="reserved">Dipesan</option>
                     </select>
-                    <button 
-                      onClick={async () => {
-                        const url = `${window.location.origin}/?table=${table.id}`;
-                        const win = window.open(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`, '_blank');
-                        if (!win) alert('Popup diblokir! Tolong izinkan popup untuk melihat QR code.');
-                      }}
-                      className="p-2 bg-white border border-neutral-200 text-orange-600 rounded-lg hover:bg-orange-50"
-                      title="Cetak QR Meja"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={async () => {
-                        if (confirm('Hapus meja ini?')) {
-                          await supabase.from('restaurant_tables').delete().eq('id', table.id);
-                          fetchData();
-                        }
-                      }}
-                      className="p-2 bg-white border border-neutral-200 text-red-500 rounded-lg hover:bg-red-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex gap-2 w-full justify-center">
+                      <button 
+                        onClick={async () => {
+                          const url = `${window.location.origin}/?table=${table.id}`;
+                          const win = window.open(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`, '_blank');
+                          if (!win) alert('Popup diblokir! Tolong izinkan popup untuk melihat QR code.');
+                        }}
+                        className="flex-1 flex justify-center p-2 bg-white border border-neutral-200 text-orange-600 rounded-lg hover:bg-orange-50"
+                        title="Cetak QR Meja"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={async () => {
+                          if (confirm('Hapus meja ini?')) {
+                            await supabase.from('restaurant_tables').delete().eq('id', table.id);
+                            fetchData();
+                          }
+                        }}
+                        className="flex-1 flex justify-center p-2 bg-white border border-neutral-200 text-red-500 rounded-lg hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
