@@ -89,19 +89,38 @@ export default function AdminView() {
   }
 
   const exportToExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(orders.map(o => ({
-      ID: o.id,
-      Meja: o.table?.table_number,
-      Total: o.total_amount,
-      Status: o.status,
-      Metode: o.payment_method,
-      PaymentStatus: o.payment_status,
-      Tanggal: format(new Date(o.created_at), 'yyyy-MM-dd HH:mm')
-    })));
+    const data = orders.map(o => ({
+      'ID PESANAN': o.id.slice(0, 8).toUpperCase(),
+      'TANGGAL': format(new Date(o.created_at), 'dd/MM/yyyy'),
+      'JAM': format(new Date(o.created_at), 'HH:mm:ss'),
+      'NOMOR MEJA': o.table?.table_number || '-',
+      'TOTAL BAYAR': o.total_amount,
+      'METODE PEMBAYARAN': o.payment_method.toUpperCase(),
+      'STATUS PEMBAYARAN': o.payment_status.toUpperCase(),
+      'STATUS PESANAN': o.status.toUpperCase()
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    
+    // Set column widths for better look
+    const wscols = [
+      { wch: 15 }, // ID
+      { wch: 12 }, // Tanggal
+      { wch: 10 }, // Jam
+      { wch: 12 }, // Meja
+      { wch: 15 }, // Total
+      { wch: 20 }, // Metode
+      { wch: 20 }, // Status Bayar
+      { wch: 18 }, // Status Pesanan
+    ];
+    ws['!cols'] = wscols;
+
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Orders");
-    XLSX.writeFile(wb, `Sales_History_${format(new Date(), 'yyyyMMdd')}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, "Laporan Penjualan");
+    XLSX.writeFile(wb, `Laporan_Warunk_Digital_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
   };
+
+  const [isKitchenMode, setIsKitchenMode] = useState(false);
 
   const updateOrderStatus = async (orderId: string, status: Order['status']) => {
     await supabase.from('orders').update({ status }).eq('id', orderId);
@@ -389,10 +408,21 @@ export default function AdminView() {
 
             <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden">
                <div className="p-6 border-b border-neutral-50 flex justify-between items-center bg-neutral-900 text-white">
-                  <h3 className="font-bold flex items-center gap-2">
-                    <ShoppingBag className="w-5 h-5 text-orange-500" />
-                    Live Order Stream
-                  </h3>
+                  <div className="flex items-center gap-4">
+                    <h3 className="font-bold flex items-center gap-2">
+                        <ShoppingBag className="w-5 h-5 text-orange-500" />
+                        Live Order Stream
+                    </h3>
+                    <button 
+                        onClick={() => setIsKitchenMode(!isKitchenMode)}
+                        className={cn(
+                            "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border-2",
+                            isKitchenMode ? "bg-orange-600 border-orange-600 text-white" : "border-white/20 text-white/60 hover:border-white/40"
+                        )}
+                    >
+                        {isKitchenMode ? "View List" : "Kitchen Mode"}
+                    </button>
+                  </div>
                   <div className="flex gap-2">
                     <button onClick={exportToExcel} className="p-2 px-4 bg-white/10 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-white/20 transition-all active:scale-95">
                         <Download className="w-4 h-4" /> Export Excel
@@ -414,7 +444,77 @@ export default function AdminView() {
                   </div>
                </div>
                
-               <div className="overflow-x-auto">
+               {isKitchenMode ? (
+                 <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-neutral-50">
+                    {orders
+                        .filter(o => statusFilter === 'all' || o.status === statusFilter)
+                        .filter(o => !['completed', 'cancelled'].includes(o.status))
+                        .map(order => (
+                        <motion.div 
+                            key={order.id}
+                            layout
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="bg-white p-6 rounded-[32px] shadow-sm border border-neutral-200 flex flex-col gap-4 relative overflow-hidden"
+                        >
+                            <div className="absolute top-0 right-0 p-4">
+                                <div className={cn(
+                                    "w-4 h-4 rounded-full",
+                                    order.status === 'pending' ? "bg-orange-500 animate-pulse" : "bg-blue-500"
+                                )}></div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="w-14 h-14 bg-neutral-900 text-white rounded-2xl flex items-center justify-center text-2xl font-black italic">
+                                    {order.table?.table_number}
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black text-neutral-400 uppercase tracking-widest">{format(new Date(order.created_at), 'HH:mm:ss')}</p>
+                                    <p className="font-bold text-neutral-900">Meja {order.table?.table_number}</p>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 py-4 border-y border-dashed border-neutral-100 space-y-2">
+                                <button 
+                                    onClick={() => fetchOrderDetails(order)}
+                                    className="w-full text-left py-2 px-3 bg-neutral-50 rounded-xl hover:bg-neutral-100 transition-colors flex items-center justify-between"
+                                >
+                                    <span className="text-xs font-bold text-neutral-600 italic">Lihat Item Menu...</span>
+                                    <ChevronRight className="w-4 h-4 text-neutral-300" />
+                                </button>
+                                <p className="text-[10px] font-bold text-neutral-400 uppercase">Status Sekarang: <span className="text-orange-600">{order.status}</span></p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                {order.status === 'pending' && (
+                                    <button 
+                                        onClick={() => updateOrderStatus(order.id, 'preparing')}
+                                        className="col-span-2 bg-neutral-900 text-white py-3 rounded-xl font-bold text-xs uppercase"
+                                    >
+                                        Mulai Proses
+                                    </button>
+                                )}
+                                {order.status === 'preparing' && (
+                                    <button 
+                                        onClick={() => updateOrderStatus(order.id, 'served')}
+                                        className="col-span-2 bg-blue-600 text-white py-3 rounded-xl font-bold text-xs uppercase"
+                                    >
+                                        Siap Sajikan
+                                    </button>
+                                )}
+                                {order.status === 'served' && (
+                                    <button 
+                                        onClick={() => updateOrderStatus(order.id, 'completed')}
+                                        className="col-span-2 bg-green-600 text-white py-3 rounded-xl font-bold text-xs uppercase"
+                                    >
+                                        Selesaikan
+                                    </button>
+                                )}
+                            </div>
+                        </motion.div>
+                    ))}
+                 </div>
+               ) : (
+                 <div className="overflow-x-auto">
                  <table className="w-full text-left">
                     <thead>
                       <tr className="bg-neutral-50 text-neutral-400 text-[10px] font-black uppercase tracking-widest">
@@ -502,6 +602,7 @@ export default function AdminView() {
                     </tbody>
                  </table>
                </div>
+               )}
             </div>
           </div>
         )}
