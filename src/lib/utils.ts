@@ -13,19 +13,48 @@ export function formatCurrency(amount: number) {
   }).format(amount);
 }
 
-// Simple logic to generate a dynamic QRIS payload if we have a base static payload
-// This is a simplified version and might need a proper CRC calculation in production
+// CRC16-CCITT for QRIS (Polynomial: 0x1021, Init: 0xFFFF)
+function crc16(data: string): string {
+  let crc = 0xFFFF;
+  for (let i = 0; i < data.length; i++) {
+    crc ^= data.charCodeAt(i) << 8;
+    for (let j = 0; j < 8; j++) {
+      if ((crc & 0x8000) !== 0) {
+        crc = (crc << 1) ^ 0x1021;
+      } else {
+        crc <<= 1;
+      }
+    }
+  }
+  return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+}
+
 export function generateDynamicQRIS(basePayload: string, amount: number) {
-  if (!basePayload) return "";
+  if (!basePayload || basePayload.length < 10) return basePayload;
   
-  // Basic QRIS amount field is tag 54
-  // Format: 54[length][amount]
+  // Remove existing CRC (last 4 chars) and its tag (6304)
+  let payload = basePayload.substring(0, basePayload.length - 8);
+  
+  // Change Point of Initiation Method to 12 (Dynamic)
+  // Tag 01 is usually at index 3: 010211 (static) -> 010212 (dynamic)
+  payload = payload.replace('010211', '010212');
+
+  // Add Transaction Amount (Tag 54)
   const amountStr = amount.toString();
   const amountField = `54${amountStr.length.toString().padStart(2, '0')}${amountStr}`;
   
-  // We need to replace or insert tag 54 and recalculate CRC (tag 63)
-  // For simplicity in this demo, we'll just return a placeholder or the base if it's too complex
-  // In a real app, you'd use a dedicated library or backend service for CRC calculation.
+  // Check if tag 54 already exists, if so replace it, else append before tag 58/59 or at the end
+  if (payload.includes('54')) {
+    // Simple replacement if present
+    const regex = /54\d{2}\d+/;
+    payload = payload.replace(regex, amountField);
+  } else {
+    payload += amountField;
+  }
+
+  // Append CRC Tag
+  payload += '6304';
   
-  return basePayload; // Returning base for now as CRC calculation is non-trivial without a dedicated lib
+  // Calculate and append new CRC
+  return payload + crc16(payload);
 }
