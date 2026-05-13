@@ -65,7 +65,7 @@ export default function UserView() {
       const feeEnabled = qrisFeeSettings.enabled === 'y' ? 'y' : 'n';
       const url = `https://api.vtech.biz.id/api/payment/qris-dynamic?apikey=${vtechApiKey.trim()}&qris=${encodeURIComponent(base.trim())}&amount=${roundedAmount}&service_fee=${feeEnabled}&fee_type=${qrisFeeSettings.type}&fee_value=${qrisFeeSettings.value}`;
       
-      console.log('Requesting Dynamic QRIS from V-Tech API...');
+      console.log('Requesting Dynamic QRIS from V-Tech API:', url);
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -73,15 +73,21 @@ export default function UserView() {
       }
 
       const result = await response.json();
+      console.log('V-Tech API Full Response:', result);
       
-      if (result.status === true && result.data && result.data.dynamic_qris) {
-        console.log('V-Tech API Success');
+      // Handle both boolean and string "true" status
+      const isSuccess = result.status === true || result.status === "true";
+
+      if (isSuccess && result.data && result.data.dynamic_qris) {
+        console.log('V-Tech API Success: Dynamic QR string received');
         setDynamicQR(result.data.dynamic_qris);
       } else {
-        const errorMsg = result.message || 'Unknown API Error';
-        console.error('V-Tech API returned fail status:', errorMsg);
-        // Terpaksa fallback ke generator lokal jika API gagal
-        setDynamicQR(generateDynamicQRIS(base, roundedAmount));
+        const errorMsg = result.message || 'API returned status fail';
+        console.error('V-Tech API Failed Reason:', errorMsg);
+        // Fallback to local generator
+        const localQR = generateDynamicQRIS(base, roundedAmount);
+        console.log('Using Local Fallback QR');
+        setDynamicQR(localQR);
       }
     } catch (err) {
       console.error('Network Error calling QRIS API:', err);
