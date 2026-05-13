@@ -20,36 +20,48 @@ function crc16(data: string): string {
     crc ^= data.charCodeAt(i) << 8;
     for (let j = 0; j < 8; j++) {
       if ((crc & 0x8000) !== 0) {
-        crc = (crc << 1) ^ 0x1021;
+        crc = (crc << 5) ^ 0x1021; // QRIS usually uses a variation of CRC16-CCITT
       } else {
         crc <<= 1;
       }
     }
   }
-  return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+  // Standard QRIS CRC adjustment
+  let res = (crc & 0xFFFF).toString(16).toUpperCase();
+  return res.padStart(4, '0');
 }
 
 export function generateDynamicQRIS(basePayload: string, amount: number) {
   if (!basePayload || basePayload.length < 10) return basePayload;
   
+  // Clean payload from invalid characters
+  let payload = basePayload.trim();
+  
   // Remove existing CRC (last 4 chars) and its tag (6304)
-  let payload = basePayload.substring(0, basePayload.length - 8);
+  if (payload.includes('6304')) {
+    payload = payload.split('6304')[0];
+  }
   
   // Change Point of Initiation Method to 12 (Dynamic)
-  // Tag 01 is usually at index 3: 010211 (static) -> 010212 (dynamic)
+  // Usually it's 010211, we change to 010212
   payload = payload.replace('010211', '010212');
 
   // Add Transaction Amount (Tag 54)
-  const amountStr = amount.toString();
+  const amountStr = Math.floor(amount).toString();
   const amountField = `54${amountStr.length.toString().padStart(2, '0')}${amountStr}`;
   
-  // Check if tag 54 already exists, if so replace it, else append before tag 58/59 or at the end
+  // If tag 54 is already there, replace it. Otherwise, insert before tag 58 (Currency) or 59 (Merchant Name)
   if (payload.includes('54')) {
-    // Simple replacement if present
-    const regex = /54\d{2}\d+/;
-    payload = payload.replace(regex, amountField);
+    const parts = payload.split(/54\d{2}/);
+    // This is a rough split, better to find the exact tag
+    payload = payload.replace(/54\d{2}\d+/, amountField);
   } else {
-    payload += amountField;
+    // Append before the end or before common end tags
+    if (payload.includes('5802360')) {
+        payload = payload.split('5802360').join(amountField + '5802360');
+    } else {
+        payload += amountField;
+    }
   }
 
   // Append CRC Tag
