@@ -62,9 +62,9 @@ export default function AdminLogin({ onLogin }: { onLogin: () => void }) {
           </div>
         )}
 
-        {(!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_URL.includes('supabase.co')) && (
+        {(!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_URL.includes('supabase.co')) && (typeof process === 'undefined' || !process.env.SUPABASE_URL) && (
           <div className="bg-orange-500/10 border border-orange-500/20 text-orange-500 p-4 rounded-2xl mb-6 text-xs font-bold text-center">
-            ⚠️ Supabase URL belum diatur di Secrets.
+            ⚠️ Supabase URL belum diatur di Secrets (Gunakan SUPABASE_URL atau VITE_SUPABASE_URL).
           </div>
         )}
 
