@@ -496,36 +496,56 @@ export default function AdminView() {
         )}
 
         {activeTab === 'settings' && (
-          <div className="max-w-2xl bg-white p-10 rounded-[40px] shadow-sm border border-neutral-100">
-             <h2 className="text-2xl font-black mb-2 uppercase italic text-neutral-900">QRIS Configuration</h2>
-             <p className="text-neutral-500 mb-8 font-medium">Input your static QRIS payload here to enable dynamic generation (placeholder logic).</p>
-             
-             <div className="space-y-6">
+          <div className="max-w-3xl bg-white p-10 rounded-[40px] shadow-sm border border-neutral-100">
+             <div className="flex items-center gap-4 mb-6">
+                <div className="p-4 bg-orange-100 rounded-2xl text-orange-600">
+                    <CreditCard className="w-8 h-8" />
+                </div>
                 <div>
-                   <label className="block text-xs font-black uppercase mb-3 tracking-widest text-neutral-400">Merchant Static Payload</label>
+                    <h2 className="text-2xl font-black uppercase italic text-neutral-900 leading-none">QRIS Configuration</h2>
+                    <p className="text-neutral-500 mt-2 font-medium">Ubah QRIS Statis Anda menjadi Dinamis secara otomatis.</p>
+                </div>
+             </div>
+             
+             <div className="space-y-8">
+                <div className="bg-neutral-900 p-8 rounded-[32px] text-white">
+                   <h4 className="font-bold flex items-center gap-2 mb-4 text-orange-400">
+                     <Plus className="w-5 h-5" />
+                     Cara Mendapatkan Payload QRIS
+                   </h4>
+                   <ol className="text-sm space-y-3 list-decimal list-inside text-neutral-300 font-medium leading-relaxed">
+                     <li>Buka gambar QRIS Statis Anda di HP.</li>
+                     <li>Scan menggunakan aplikasi "QR Scanner" atau "Google Lens".</li>
+                     <li>Salin (Copy) teks hasil scan yang diawali dengan <code className="bg-white/10 p-1 px-2 rounded font-mono text-orange-300">000201...</code></li>
+                     <li>Tempel (Paste) teks tersebut pada kolom di bawah ini.</li>
+                   </ol>
+                </div>
+
+                <div>
+                   <label className="block text-[10px] font-black uppercase mb-3 tracking-widest text-neutral-400">Merchant Static Payload</label>
                    <textarea 
-                      className="w-full border-2 border-neutral-100 p-6 rounded-3xl h-40 font-mono text-sm focus:ring-4 focus:ring-orange-100 focus:border-orange-500 transition-all outline-none"
-                      placeholder="000201010211..."
+                      className="w-full border-2 border-neutral-100 p-6 rounded-3xl h-40 font-mono text-sm focus:ring-4 focus:ring-orange-100 focus:border-orange-500 transition-all outline-none bg-neutral-50"
+                      placeholder="Contoh: 00020101021126670014ID.LINKAJA.WWW01..."
                       value={qrisPayload}
                       onChange={e => setQrisPayload(e.target.value)}
                    />
                 </div>
                 
-                <div className="bg-neutral-50 p-6 rounded-[32px] border border-neutral-200 border-dashed">
-                   <h4 className="font-bold flex items-center gap-2 mb-2 text-neutral-700">
-                     <CheckCircle2 className="w-5 h-5 text-green-500" />
-                     How it works
-                   </h4>
-                   <p className="text-xs text-neutral-500 leading-relaxed">
-                     Paste your full QRIS string from your provider (GPN/DANA/OVO/etc). We will use this as a base for generating dynamic codes that include the order amount automatically for customers.
-                   </p>
+                <div className="bg-green-50 p-6 rounded-[24px] border border-green-100 flex items-start gap-4">
+                   <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0 mt-1" />
+                   <div>
+                       <p className="font-bold text-green-900 text-sm">Status: {qrisPayload ? 'Payload Terdeteksi' : 'Belum Ada Payload'}</p>
+                       <p className="text-xs text-green-700/70 mt-1 uppercase font-black">
+                         {qrisPayload && qrisPayload.startsWith('00') ? 'Format Valid (Mulai dengan 00)' : qrisPayload ? 'Format Mungkin Tidak Valid' : 'Silakan masukkan payload'}
+                       </p>
+                   </div>
                 </div>
 
                 <button 
                   onClick={saveQrisSettings}
-                  className="w-full bg-neutral-900 text-white py-5 rounded-[24px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-2xl"
+                  className="w-full bg-orange-600 text-white py-5 rounded-[24px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-2xl shadow-orange-100"
                 >
-                  Save Settings
+                  Simpan Pengaturan QRIS
                 </button>
              </div>
           </div>
