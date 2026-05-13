@@ -9,10 +9,10 @@ import {
   Search, 
   Trash2, 
   Edit3, 
-  LogOut, 
+  LogOut,
   Table as TableIcon,
   Filter,
-  Download,
+  Download, 
   CheckCircle2,
   XCircle,
   TrendingUp,
@@ -336,18 +336,18 @@ export default function AdminView() {
         </div>
 
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
-          <NavItem active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }} icon={<LayoutDashboard />} label="Dashboard" />
-          <NavItem active={activeTab === 'menu'} onClick={() => { setActiveTab('menu'); setIsSidebarOpen(false); }} icon={<Utensils />} label="Menu Items" />
-          <NavItem active={activeTab === 'categories'} onClick={() => { setActiveTab('categories'); setIsSidebarOpen(false); }} icon={<Filter />} label="Categories" />
-          <NavItem active={activeTab === 'orders'} onClick={() => { setActiveTab('orders'); setIsSidebarOpen(false); }} icon={<ShoppingBag />} label="Orders" />
-          <NavItem active={activeTab === 'tables'} onClick={() => { setActiveTab('tables'); setIsSidebarOpen(false); }} icon={<TableIcon />} label="Tables" />
-          <NavItem active={activeTab === 'settings'} onClick={() => { setActiveTab('settings'); setIsSidebarOpen(false); }} icon={<SettingsIcon />} label="Settings" />
+          <NavItem active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }} icon={<LayoutDashboard />} label="Dasbor" />
+          <NavItem active={activeTab === 'menu'} onClick={() => { setActiveTab('menu'); setIsSidebarOpen(false); }} icon={<Utensils />} label="Menu Makanan" />
+          <NavItem active={activeTab === 'categories'} onClick={() => { setActiveTab('categories'); setIsSidebarOpen(false); }} icon={<Filter />} label="Kategori" />
+          <NavItem active={activeTab === 'orders'} onClick={() => { setActiveTab('orders'); setIsSidebarOpen(false); }} icon={<ShoppingBag />} label="Pesanan" />
+          <NavItem active={activeTab === 'tables'} onClick={() => { setActiveTab('tables'); setIsSidebarOpen(false); }} icon={<TableIcon />} label="Meja" />
+          <NavItem active={activeTab === 'settings'} onClick={() => { setActiveTab('settings'); setIsSidebarOpen(false); }} icon={<SettingsIcon />} label="Pengaturan" />
         </nav>
 
         <div className="p-4 mt-auto">
           <button className="flex items-center gap-3 text-neutral-400 hover:text-white transition-colors w-full p-3 px-4 rounded-xl hover:bg-white/5">
             <LogOut className="w-5 h-5" />
-            <span className="font-medium">Sign Out</span>
+            <span className="font-medium">Keluar</span>
           </button>
         </div>
       </aside>
@@ -363,15 +363,22 @@ export default function AdminView() {
               <Menu className="w-6 h-6" />
             </button>
             <div>
-              <h1 className="text-2xl md:text-3xl font-black text-neutral-900 capitalize leading-none">{activeTab}</h1>
-              <p className="text-neutral-500 text-sm md:text-base mt-2">Welcome back, Admin</p>
+              <h1 className="text-2xl md:text-3xl font-black text-neutral-900 capitalize leading-none">
+                {activeTab === 'dashboard' ? 'Dasbor' : 
+                 activeTab === 'menu' ? 'Menu Makanan' : 
+                 activeTab === 'categories' ? 'Kategori' : 
+                 activeTab === 'orders' ? 'Pesanan' : 
+                 activeTab === 'tables' ? 'Meja' : 
+                 activeTab === 'settings' ? 'Pengaturan' : activeTab}
+              </h1>
+              <p className="text-neutral-500 text-sm md:text-base mt-2">Selamat datang kembali, Admin</p>
             </div>
           </div>
           
           <div className="flex items-center gap-4">
             <div className="bg-white p-2 px-4 rounded-2xl shadow-sm border border-neutral-100 flex items-center gap-2">
               <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-              <span className="text-sm font-bold text-neutral-700">System Live</span>
+              <span className="text-sm font-bold text-neutral-700">Sistem Aktif</span>
             </div>
           </div>
         </header>
@@ -379,16 +386,16 @@ export default function AdminView() {
         {activeTab === 'dashboard' && (
           <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <StatCard title="Total Sales" value={formatCurrency(orders.filter(o => o.payment_status === 'paid').reduce((s,o) => s + parseFloat(o.total_amount as any), 0))} icon={<TrendingUp className="text-green-500" />} />
-              <StatCard title="Active Orders" value={orders.filter(o => !['completed', 'cancelled'].includes(o.status)).length.toString()} icon={<ShoppingBag className="text-orange-500" />} />
-              <StatCard title="Occupied Tables" value={tables.filter(t => t.status === 'occupied').length.toString()} icon={<TableIcon className="text-blue-500" />} />
-              <StatCard title="Total Items" value={menuItems.length.toString()} icon={<Utensils className="text-purple-500" />} />
+              <StatCard title="Total Penjualan" value={formatCurrency(orders.filter(o => o.payment_status === 'paid').reduce((s,o) => s + parseFloat(o.total_amount as any), 0))} icon={<TrendingUp className="text-green-500" />} />
+              <StatCard title="Pesanan Aktif" value={orders.filter(o => !['completed', 'cancelled'].includes(o.status)).length.toString()} icon={<ShoppingBag className="text-orange-500" />} />
+              <StatCard title="Meja Terisi" value={tables.filter(t => t.status === 'occupied').length.toString()} icon={<TableIcon className="text-blue-500" />} />
+              <StatCard title="Total Item" value={menuItems.length.toString()} icon={<Utensils className="text-purple-500" />} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 bg-white p-8 rounded-3xl shadow-sm border border-neutral-100">
                 <div className="flex justify-between items-center mb-8">
-                  <h3 className="text-xl font-bold">Revenue Overview</h3>
+                  <h3 className="text-xl font-bold">Ringkasan Pendapatan</h3>
                   <Download className="w-5 h-5 text-neutral-300 cursor-pointer hover:text-black" onClick={exportToExcel} />
                 </div>
                 <div className="h-[300px]">
@@ -405,7 +412,7 @@ export default function AdminView() {
               </div>
 
               <div className="bg-white p-8 rounded-3xl shadow-sm border border-neutral-100">
-                <h3 className="text-xl font-bold mb-8">Recent Orders</h3>
+                <h3 className="text-xl font-bold mb-8">Pesanan Terbaru</h3>
                 <div className="space-y-6">
                   {orders.slice(0, 5).map(o => (
                     <div key={o.id} className="flex items-center justify-between">
@@ -435,13 +442,13 @@ export default function AdminView() {
         {activeTab === 'categories' && (
           <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden">
             <div className="p-4 md:p-8 border-b border-neutral-50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <h3 className="text-xl font-bold">Category Management</h3>
+              <h3 className="text-xl font-bold">Manajemen Kategori</h3>
               <button 
                 onClick={() => { setEditingCategory(null); setIsCategoryModalOpen(true); }}
                 className="bg-orange-600 text-white p-4 px-8 w-full md:w-auto justify-center rounded-2xl font-bold flex items-center gap-2 hover:bg-orange-500 transition-all shadow-lg shadow-orange-100"
               >
                 <Plus className="w-5 h-5" />
-                Add New Category
+                Tambah Kategori
               </button>
             </div>
 
@@ -449,22 +456,22 @@ export default function AdminView() {
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-neutral-50 text-neutral-400 text-xs font-black uppercase tracking-wider whitespace-nowrap">
-                  <th className="p-8">Name</th>
-                  <th className="p-8">Order</th>
-                  <th className="p-8">Menu Count</th>
-                  <th className="p-8">Actions</th>
+                  <th className="p-4 md:p-8">Nama</th>
+                  <th className="p-4 md:p-8">Urutan</th>
+                  <th className="p-4 md:p-8">Jumlah Menu</th>
+                  <th className="p-4 md:p-8">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-50">
                 {categories.map(cat => (
                   <tr key={cat.id} className="hover:bg-neutral-50/50 transition-colors group">
-                    <td className="p-8 font-bold text-neutral-900">{cat.name}</td>
-                    <td className="p-8 font-medium text-neutral-500">{cat.display_order}</td>
-                    <td className="p-8 text-neutral-500">
-                      {menuItems.filter(i => i.category_id === cat.id).length} items
+                    <td className="p-4 md:p-8 font-bold text-neutral-900">{cat.name}</td>
+                    <td className="p-4 md:p-8 font-medium text-neutral-500">{cat.display_order}</td>
+                    <td className="p-4 md:p-8 text-neutral-500">
+                      {menuItems.filter(i => i.category_id === cat.id).length} item
                     </td>
-                    <td className="p-8">
-                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td className="p-4 md:p-8">
+                       <div className="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                         <button onClick={() => { setEditingCategory(cat); setIsCategoryModalOpen(true); }} className="p-3 bg-white border border-neutral-100 rounded-xl shadow-sm hover:text-blue-600 transition-all"><Edit3 className="w-4 h-4" /></button>
                         <button onClick={() => deleteCategory(cat.id)} className="p-3 bg-white border border-neutral-100 rounded-xl shadow-sm hover:text-red-600 transition-all"><Trash2 className="w-4 h-4" /></button>
                       </div>
@@ -484,7 +491,7 @@ export default function AdminView() {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 w-5 h-5" />
                 <input 
                   className="w-full bg-neutral-50 border-0 p-4 pl-12 rounded-2xl focus:ring-2 focus:ring-orange-500 transition-all"
-                  placeholder="Search menu items..."
+                  placeholder="Cari menu makanan..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                 />
@@ -494,7 +501,7 @@ export default function AdminView() {
                 className="bg-orange-600 text-white p-4 px-8 w-full md:w-auto justify-center rounded-2xl font-bold flex items-center gap-2 hover:bg-orange-500 transition-all shadow-lg shadow-orange-100"
               >
                 <Plus className="w-5 h-5" />
-                Add New Menu
+                Tambah Menu
               </button>
             </div>
 
@@ -502,43 +509,43 @@ export default function AdminView() {
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-neutral-50 text-neutral-400 text-xs font-black uppercase tracking-wider whitespace-nowrap">
-                  <th className="p-8">Details</th>
-                  <th className="p-8">Category</th>
-                  <th className="p-8">Price</th>
-                  <th className="p-8">Stock</th>
-                  <th className="p-8">Status</th>
-                  <th className="p-8">Actions</th>
+                  <th className="p-4 md:p-8">Detail</th>
+                  <th className="p-4 md:p-8">Kategori</th>
+                  <th className="p-4 md:p-8">Harga</th>
+                  <th className="p-4 md:p-8">Stok</th>
+                  <th className="p-4 md:p-8">Status</th>
+                  <th className="p-4 md:p-8">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-50">
                 {menuItems.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase())).map(item => (
                   <tr key={item.id} className="hover:bg-neutral-50/50 transition-colors group">
-                    <td className="p-8">
-                       <div className="flex items-center gap-4">
-                         <div className="w-16 h-16 rounded-2xl overflow-hidden bg-neutral-100 border border-neutral-50">
+                    <td className="p-4 md:p-8">
+                       <div className="flex items-center gap-4 w-48 md:w-auto">
+                         <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl overflow-hidden bg-neutral-100 border border-neutral-50 shrink-0">
                             <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                          </div>
                          <div>
-                           <p className="font-bold text-neutral-900">{item.name}</p>
+                           <p className="font-bold text-neutral-900 line-clamp-1">{item.name}</p>
                            <p className="text-xs text-neutral-400 max-w-[200px] truncate">{item.description}</p>
                          </div>
                        </div>
                     </td>
-                    <td className="p-8">
-                       <span className="px-3 py-1 bg-neutral-100 rounded-full text-xs font-bold text-neutral-600">
-                         {categories.find(c => c.id === item.category_id)?.name || 'Uncategorized'}
+                    <td className="p-4 md:p-8">
+                       <span className="px-3 py-1 bg-neutral-100 rounded-full text-xs font-bold text-neutral-600 whitespace-nowrap">
+                         {categories.find(c => c.id === item.category_id)?.name || 'Tidak Ada'}
                        </span>
                     </td>
-                    <td className="p-8 font-black text-neutral-900">{formatCurrency(item.price)}</td>
-                    <td className="p-8 font-medium text-neutral-500">{item.stock_quantity}</td>
-                    <td className="p-8">
+                    <td className="p-4 md:p-8 font-black text-neutral-900 whitespace-nowrap">{formatCurrency(item.price)}</td>
+                    <td className="p-4 md:p-8 font-medium text-neutral-500">{item.stock_quantity}</td>
+                    <td className="p-4 md:p-8">
                        <div className={cn(
                          "w-3 h-3 rounded-full",
                          item.is_available ? "bg-green-500 shadow-sm shadow-green-200" : "bg-red-500 shadow-sm shadow-red-200"
                        )}></div>
                     </td>
-                    <td className="p-8">
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td className="p-4 md:p-8">
+                      <div className="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                         <button onClick={() => { setEditingItem(item); setIsModalOpen(true); }} className="p-3 bg-white border border-neutral-100 rounded-xl shadow-sm hover:text-blue-600 transition-all"><Edit3 className="w-4 h-4" /></button>
                         <button onClick={() => deleteMenuItem(item.id)} className="p-3 bg-white border border-neutral-100 rounded-xl shadow-sm hover:text-red-600 transition-all"><Trash2 className="w-4 h-4" /></button>
                       </div>
@@ -556,21 +563,21 @@ export default function AdminView() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-neutral-100 flex items-center justify-between">
                    <div>
-                     <p className="text-neutral-400 font-bold text-xs uppercase mb-1">Today's Orders</p>
+                     <p className="text-neutral-400 font-bold text-xs uppercase mb-1">Pesanan Hari Ini</p>
                      <h2 className="text-2xl font-black">{orders.length}</h2>
                    </div>
                    <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600"><ShoppingBag /></div>
                 </div>
                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-neutral-100 flex items-center justify-between">
                    <div>
-                     <p className="text-neutral-400 font-bold text-xs uppercase mb-1">Completed</p>
+                     <p className="text-neutral-400 font-bold text-xs uppercase mb-1">Selesai</p>
                      <h2 className="text-2xl font-black">{orders.filter(o => o.status === 'completed').length}</h2>
                    </div>
                    <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center text-green-600"><CheckCircle2 /></div>
                 </div>
                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-neutral-100 flex items-center justify-between">
                    <div>
-                     <p className="text-neutral-400 font-bold text-xs uppercase mb-1">Pending Payment</p>
+                     <p className="text-neutral-400 font-bold text-xs uppercase mb-1">Menunggu Pembayaran</p>
                      <h2 className="text-2xl font-black">{orders.filter(o => o.payment_status === 'unpaid').length}</h2>
                    </div>
                    <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center text-red-600"><CreditCard /></div>
@@ -591,12 +598,12 @@ export default function AdminView() {
                             isKitchenMode ? "bg-orange-600 border-orange-600 text-white" : "border-white/20 text-white/60 hover:border-white/40"
                         )}
                     >
-                        {isKitchenMode ? "View List" : "Kitchen Mode"}
+                        {isKitchenMode ? "Lihat Daftar" : "Mode Dapur"}
                     </button>
                   </div>
                   <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 hide-scrollbar">
                     <button onClick={exportToExcel} className="p-2 px-4 w-full md:w-auto justify-center bg-white/10 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-white/20 transition-all active:scale-95 whitespace-nowrap">
-                        <Download className="w-4 h-4" /> Export Excel
+                        <Download className="w-4 h-4" /> Ekspor Excel
                     </button>
                     <div className="flex bg-white/10 rounded-xl overflow-x-auto border border-white/5 hide-scrollbar w-full md:w-auto shrink-0 hide-scrollbar">
                         {['all', 'pending', 'preparing', 'completed'].map((status) => (
@@ -689,12 +696,12 @@ export default function AdminView() {
                  <table className="w-full text-left">
                     <thead>
                       <tr className="bg-neutral-50 text-neutral-400 text-[10px] font-black uppercase tracking-widest">
-                        <th className="p-6 px-10">Time / ID</th>
-                        <th className="p-6">Table</th>
-                        <th className="p-6">Amount</th>
-                        <th className="p-6">Payment</th>
-                        <th className="p-6">Status</th>
-                        <th className="p-6 text-right px-10 border-l border-neutral-50">Manage</th>
+                        <th className="p-4 md:p-6 px-4 md:px-10">Waktu / ID</th>
+                        <th className="p-4 md:p-6">Meja</th>
+                        <th className="p-4 md:p-6">Total</th>
+                        <th className="p-4 md:p-6 text-center">Pembayaran</th>
+                        <th className="p-4 md:p-6">Status</th>
+                        <th className="p-4 md:p-6 text-right px-4 md:px-10 border-l border-neutral-50">Kelola</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-50">
@@ -702,20 +709,20 @@ export default function AdminView() {
                         .filter(o => statusFilter === 'all' || o.status === statusFilter)
                         .map(order => (
                         <tr key={order.id} className="hover:bg-neutral-50/50 transition-all">
-                          <td className="p-6 px-10">
+                          <td className="p-4 md:p-6 px-4 md:px-10">
                              <div>
-                               <p className="font-black text-neutral-900 text-sm">{format(new Date(order.created_at), 'HH:mm:ss')}</p>
+                               <p className="font-black text-neutral-900 text-sm whitespace-nowrap">{format(new Date(order.created_at), 'HH:mm:ss')}</p>
                                <p className="text-[10px] font-mono text-neutral-300">{order.id.slice(0, 8)}...</p>
                              </div>
                           </td>
-                          <td className="p-6">
+                          <td className="p-4 md:p-6">
                              <div className="w-10 h-10 bg-neutral-900 text-white rounded-xl flex items-center justify-center font-bold italic shadow-lg shadow-neutral-200">
                                {order.table?.table_number}
                              </div>
                           </td>
-                          <td className="p-6"><span className="font-black text-neutral-900">{formatCurrency(order.total_amount)}</span></td>
-                          <td className="p-6">
-                             <div className="flex flex-col">
+                          <td className="p-4 md:p-6"><span className="font-black text-neutral-900 whitespace-nowrap">{formatCurrency(order.total_amount)}</span></td>
+                          <td className="p-4 md:p-6">
+                             <div className="flex flex-col items-center">
                                <div className="flex items-center gap-2">
                                  {order.payment_method === 'qris' ? <CreditCard className="w-4 h-4 text-purple-600" /> : <Banknote className="w-4 h-4 text-green-600" />}
                                  <span className="font-bold text-xs uppercase">{order.payment_method}</span>
@@ -723,14 +730,14 @@ export default function AdminView() {
                                <button 
                                 onClick={() => updatePaymentStatus(order.id, order.payment_status === 'paid' ? 'unpaid' : 'paid')}
                                 className={cn(
-                                  "text-[10px] font-bold underline mt-1 text-left",
+                                  "text-[10px] font-bold underline mt-1 text-center",
                                   order.payment_status === 'paid' ? "text-green-600" : "text-red-600"
                                 )}>
-                                  Mark as {order.payment_status === 'paid' ? 'Unpaid' : 'Paid'}
+                                  Jadi {order.payment_status === 'paid' ? 'Blm Lunas' : 'Lunas'}
                                 </button>
                              </div>
                           </td>
-                          <td className="p-6">
+                          <td className="p-4 md:p-6">
                              <select 
                                 value={order.status}
                                 onChange={(e) => updateOrderStatus(order.id, e.target.value as any)}
@@ -742,27 +749,27 @@ export default function AdminView() {
                                   "bg-green-100 text-green-600"
                                 )}
                              >
-                                <option value="pending">Pending</option>
-                                <option value="confirmed">Confirmed</option>
-                                <option value="preparing">Preparing</option>
-                                <option value="served">Served</option>
-                                <option value="completed">Completed</option>
-                                <option value="cancelled">Cancelled</option>
+                                <option value="pending">Menunggu</option>
+                                <option value="confirmed">Dikonfirmasi</option>
+                                <option value="preparing">Disiapkan</option>
+                                <option value="served">Disajikan</option>
+                                <option value="completed">Selesai</option>
+                                <option value="cancelled">Dibatalkan</option>
                              </select>
                           </td>
-                          <td className="p-6 text-right px-10 border-l border-neutral-50">
+                          <td className="p-4 md:p-6 text-right px-4 md:px-10 border-l border-neutral-50">
                              <div className="flex justify-end gap-2">
                                <button 
                                 onClick={() => fetchOrderDetails(order)}
                                 className="p-3 hover:bg-neutral-100 text-neutral-300 hover:text-neutral-900 rounded-xl transition-all"
-                                title="View Details"
+                                title="Lihat Detail"
                                >
                                 <Search className="w-5 h-5" />
                                </button>
                                <button 
                                 onClick={() => deleteOrder(order.id)}
                                 className="p-3 hover:bg-red-50 text-neutral-300 hover:text-red-600 rounded-xl transition-all"
-                                title="Delete"
+                                title="Hapus"
                                >
                                 <Trash2 className="w-5 h-5" />
                                </button>
@@ -782,12 +789,12 @@ export default function AdminView() {
           <div className="max-w-4xl bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden">
             <div className="p-4 md:p-8 border-b border-neutral-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-neutral-900 text-white">
                <div>
-                 <h3 className="text-lg md:text-xl font-bold italic">Table Management</h3>
-                 <p className="text-neutral-400 text-xs">Manage active tables and availability</p>
+                 <h3 className="text-lg md:text-xl font-bold italic">Manajemen Meja</h3>
+                 <p className="text-neutral-400 text-xs">Kelola meja aktif dan ketersediaan</p>
                </div>
                <button 
                 onClick={async () => {
-                  const num = prompt('Enter Table Number (e.g. 01):');
+                  const num = prompt('Masukkan Nomor Meja (Contoh: 01):');
                   if (num) {
                     await supabase.from('restaurant_tables').insert({ table_number: num, status: 'available' });
                     fetchData();
@@ -795,7 +802,7 @@ export default function AdminView() {
                 }}
                 className="bg-orange-600 text-white p-3 px-6 rounded-xl font-bold flex items-center gap-2 hover:bg-orange-500 transition-all"
                >
-                 <Plus className="w-5 h-5" /> Add Table
+                 <Plus className="w-5 h-5" /> Tambah Meja
                </button>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-8">
@@ -808,11 +815,11 @@ export default function AdminView() {
                     {table.table_number}
                   </div>
                   <div className="text-center">
-                    <p className="font-bold text-sm tracking-tight text-neutral-900">Table {table.table_number}</p>
+                    <p className="font-bold text-sm tracking-tight text-neutral-900">Meja {table.table_number}</p>
                     <p className={cn(
                       "text-[10px] uppercase font-black mt-1",
-                      table.status === 'available' ? "text-green-500" : "text-orange-500"
-                    )}>{table.status}</p>
+                      table.status === 'available' ? "text-green-500" : table.status === 'reserved' ? "text-blue-500" : "text-orange-500"
+                    )}>{table.status === 'available' ? 'Tersedia' : table.status === 'occupied' ? 'Terisi' : 'Dipesan'}</p>
                   </div>
                   <div className="flex gap-2 w-full mt-2">
                     <select 
@@ -823,24 +830,24 @@ export default function AdminView() {
                       }}
                       className="flex-1 bg-white border border-neutral-200 text-[10px] font-bold p-2 rounded-lg"
                     >
-                      <option value="available">Available</option>
-                      <option value="occupied">Occupied</option>
-                      <option value="reserved">Reserved</option>
+                      <option value="available">Tersedia</option>
+                      <option value="occupied">Terisi</option>
+                      <option value="reserved">Dipesan</option>
                     </select>
                     <button 
                       onClick={async () => {
                         const url = `${window.location.origin}/?table=${table.id}`;
                         const win = window.open(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`, '_blank');
-                        if (!win) alert('Popup blocked! Please allow popups to see the QR code.');
+                        if (!win) alert('Popup diblokir! Tolong izinkan popup untuk melihat QR code.');
                       }}
                       className="p-2 bg-white border border-neutral-200 text-orange-600 rounded-lg hover:bg-orange-50"
-                      title="Print Table QR"
+                      title="Cetak QR Meja"
                     >
                       <Plus className="w-4 h-4" />
                     </button>
                     <button 
                       onClick={async () => {
-                        if (confirm('Delete this table?')) {
+                        if (confirm('Hapus meja ini?')) {
                           await supabase.from('restaurant_tables').delete().eq('id', table.id);
                           fetchData();
                         }
@@ -863,7 +870,7 @@ export default function AdminView() {
                     <CreditCard className="w-8 h-8" />
                 </div>
                 <div>
-                    <h2 className="text-2xl font-black uppercase italic text-neutral-900 leading-none">QRIS Configuration</h2>
+                    <h2 className="text-2xl font-black uppercase italic text-neutral-900 leading-none">Konfigurasi QRIS</h2>
                     <p className="text-neutral-500 mt-2 font-medium">Ubah QRIS Statis Anda menjadi Dinamis secara otomatis.</p>
                 </div>
              </div>
@@ -894,29 +901,29 @@ export default function AdminView() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-[10px] font-black uppercase mb-3 tracking-widest text-neutral-400">Fee Status</label>
+                    <label className="block text-[10px] font-black uppercase mb-3 tracking-widest text-neutral-400">Status Biaya Tambahan</label>
                     <select 
                       className="w-full border-2 border-neutral-100 p-4 rounded-2xl text-sm focus:ring-4 focus:ring-orange-100 focus:border-orange-500 transition-all outline-none bg-neutral-50 font-bold"
                       value={qrisFeeEnabled}
                       onChange={e => setQrisFeeEnabled(e.target.value)}
                     >
-                      <option value="y">Enabled (Y)</option>
-                      <option value="n">Disabled (N)</option>
+                      <option value="y">Aktif (Y)</option>
+                      <option value="n">Nonaktif (N)</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase mb-3 tracking-widest text-neutral-400">Fee Type</label>
+                    <label className="block text-[10px] font-black uppercase mb-3 tracking-widest text-neutral-400">Tipe Biaya</label>
                     <select 
                       className="w-full border-2 border-neutral-100 p-4 rounded-2xl text-sm focus:ring-4 focus:ring-orange-100 focus:border-orange-500 transition-all outline-none bg-neutral-50 font-bold"
                       value={qrisFeeType}
                       onChange={e => setQrisFeeType(e.target.value)}
                     >
-                      <option value="r">Flat (R)</option>
-                      <option value="p">Percentage (P)</option>
+                      <option value="r">Tetap (R)</option>
+                      <option value="p">Persentase (P)</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase mb-3 tracking-widest text-neutral-400">Fee Value</label>
+                    <label className="block text-[10px] font-black uppercase mb-3 tracking-widest text-neutral-400">Nilai Biaya</label>
                     <input 
                       className="w-full border-2 border-neutral-100 p-4 rounded-2xl text-sm focus:ring-4 focus:ring-orange-100 focus:border-orange-500 transition-all outline-none bg-neutral-50 font-bold"
                       type="number"
@@ -927,7 +934,7 @@ export default function AdminView() {
                 </div>
 
                 <div>
-                   <label className="block text-[10px] font-black uppercase mb-3 tracking-widest text-neutral-400">Merchant Static Payload</label>
+                   <label className="block text-[10px] font-black uppercase mb-3 tracking-widest text-neutral-400">Payload Statis Merchant</label>
                    <textarea 
                       className="w-full border-2 border-neutral-100 p-6 rounded-3xl h-40 font-mono text-sm focus:ring-4 focus:ring-orange-100 focus:border-orange-500 transition-all outline-none bg-neutral-50"
                       placeholder="Contoh: 00020101021126670014ID.LINKAJA.WWW01..."
@@ -968,7 +975,7 @@ export default function AdminView() {
             >
               <div className="p-8 border-b border-neutral-50 flex items-center justify-between">
                 <h2 className="text-2xl font-black italic uppercase">
-                    {editingItem ? 'Edit Item' : 'New Menu Item'}
+                    {editingItem ? 'Edit Menu' : 'Menu Baru'}
                 </h2>
                 <button onClick={() => setIsModalOpen(false)} className="p-3 bg-neutral-100 rounded-2xl"><XCircle className="w-6 h-6" /></button>
               </div>
@@ -977,30 +984,30 @@ export default function AdminView() {
                  <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-4">
                         <div>
-                        <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Name</label>
+                        <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Nama</label>
                         <input name="name" required defaultValue={editingItem?.name} className="w-full bg-neutral-50 border-0 p-4 rounded-2xl focus:ring-2 focus:ring-orange-500" />
                         </div>
                         <div>
-                        <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Price (IDR)</label>
+                        <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Harga (Rp)</label>
                         <input name="price" type="number" required defaultValue={editingItem?.price} className="w-full bg-neutral-50 border-0 p-4 rounded-2xl focus:ring-2 focus:ring-orange-500" />
                         </div>
                     </div>
                     <div className="space-y-4">
                         <div>
-                        <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Category</label>
+                        <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Kategori</label>
                         <select name="category_id" defaultValue={editingItem?.category_id} className="w-full bg-neutral-50 border-0 p-4 rounded-2xl focus:ring-2 focus:ring-orange-500">
                             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                         </div>
                         <div>
-                        <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Stock</label>
+                        <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Stok</label>
                         <input name="stock_quantity" type="number" defaultValue={editingItem?.stock_quantity} className="w-full bg-neutral-50 border-0 p-4 rounded-2xl focus:ring-2 focus:ring-orange-500" />
                         </div>
                     </div>
                  </div>
 
                  <div>
-                    <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Image</label>
+                    <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Gambar</label>
                     <div className="flex gap-4">
                       <div className="flex-1">
                         <input 
@@ -1008,18 +1015,18 @@ export default function AdminView() {
                           accept="image/*"
                           className="w-full bg-neutral-50 border-0 p-4 rounded-2xl focus:ring-2 focus:ring-orange-500" 
                         />
-                        <p className="text-[10px] text-neutral-400 mt-1 italic">Click to upload. Pastikan Bucket "menu-photos" diset sebagai <b>Public</b> di Supabase.</p>
+                        <p className="text-[10px] text-neutral-400 mt-1 italic">Klik untuk unggah. Pastikan Bucket "menu-photos" diset sebagai <b>Public</b> di Supabase.</p>
                       </div>
                       <div className="flex-1">
                         <input 
                           name="image_url_text" 
                           defaultValue={editingItem?.image_url} 
-                          placeholder="Or paste URL (https://...)" 
+                          placeholder="Atau tempel URL (https://...)" 
                           className="w-full bg-neutral-50 border-0 p-4 rounded-2xl focus:ring-2 focus:ring-orange-500" 
                         />
                       </div>
                     </div>
-                    {uploading && <p className="text-xs text-orange-600 font-bold mt-2 animate-pulse">Uploading photo...</p>}
+                    {uploading && <p className="text-xs text-orange-600 font-bold mt-2 animate-pulse">Mengunggah foto...</p>}
                     {editingItem?.image_url && (
                       <div className="mt-4 w-32 h-32 rounded-2xl overflow-hidden border border-neutral-100">
                         <img src={editingItem.image_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
@@ -1028,17 +1035,17 @@ export default function AdminView() {
                  </div>
 
                  <div>
-                    <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Description</label>
+                    <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Deskripsi</label>
                     <textarea name="description" defaultValue={editingItem?.description} className="w-full bg-neutral-50 border-0 p-4 rounded-2xl focus:ring-2 focus:ring-orange-500 h-24" />
                  </div>
 
                  <div className="flex items-center gap-3 bg-neutral-50 p-4 rounded-2xl">
                     <input type="checkbox" name="is_available" defaultChecked={editingItem?.is_available ?? true} className="w-5 h-5 rounded-md border-neutral-300 text-orange-600 focus:ring-orange-500" />
-                    <span className="text-sm font-bold">Item is currently available for purchase</span>
+                    <span className="text-sm font-bold">Menu ini tersedia untuk dibeli</span>
                  </div>
 
                  <button className="w-full bg-orange-600 text-white p-5 rounded-[24px] font-black uppercase tracking-widest shadow-xl shadow-orange-100 mt-4">
-                    Save Changes
+                    Simpan Perubahan
                  </button>
               </form>
             </motion.div>
@@ -1057,7 +1064,7 @@ export default function AdminView() {
             >
               <div className="p-8 border-b border-neutral-100 flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-black italic uppercase leading-none">Order Details</h2>
+                  <h2 className="text-2xl font-black italic uppercase leading-none">Detail Pesanan</h2>
                   <p className="text-xs text-neutral-400 mt-2 font-mono uppercase tracking-widest">#{selectedOrder.id.slice(0, 8)}</p>
                 </div>
                 <button onClick={() => setSelectedOrder(null)} className="p-3 bg-neutral-100 rounded-2xl"><XCircle className="w-6 h-6" /></button>
@@ -1070,13 +1077,13 @@ export default function AdminView() {
                     <p className="text-xl font-black">{selectedOrder.table?.table_number}</p>
                   </div>
                   <div className="bg-neutral-50 p-4 rounded-2xl">
-                    <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1">Time</p>
+                    <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1">Waktu</p>
                     <p className="text-lg font-bold">{format(new Date(selectedOrder.created_at), 'HH:mm:ss')}</p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest px-1">Items</p>
+                  <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest px-1">Item</p>
                   {orderDetails.map((item: any) => (
                     <div key={item.id} className="flex items-center gap-4 group">
                       <div className="w-14 h-14 rounded-2xl overflow-hidden bg-neutral-100 shrink-0">
@@ -1093,18 +1100,18 @@ export default function AdminView() {
 
                 <div className="border-t border-dashed border-neutral-200 pt-6 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-neutral-500 font-medium tracking-tight">Payment Method</span>
+                    <span className="text-neutral-500 font-medium tracking-tight">Metode Pembayaran</span>
                     <span className="font-black uppercase italic text-orange-600">{selectedOrder.payment_method}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-neutral-500 font-medium tracking-tight">Payment Status</span>
+                    <span className="text-neutral-500 font-medium tracking-tight">Status Pembayaran</span>
                     <span className={cn(
                       "font-black uppercase italic",
                       selectedOrder.payment_status === 'paid' ? "text-green-600" : "text-red-500"
-                    )}>{selectedOrder.payment_status}</span>
+                    )}>{selectedOrder.payment_status === 'paid' ? 'Lunas' : 'Belum Lunas'}</span>
                   </div>
                   <div className="flex justify-between items-end pt-4">
-                     <p className="text-neutral-400 text-[10px] font-black uppercase tracking-widest leading-none">Total Amount</p>
+                     <p className="text-neutral-400 text-[10px] font-black uppercase tracking-widest leading-none">Total Tagihan</p>
                      <p className="text-3xl font-black italic text-neutral-900 leading-none">{formatCurrency(selectedOrder.total_amount)}</p>
                   </div>
                 </div>
@@ -1115,7 +1122,7 @@ export default function AdminView() {
                   onClick={() => setSelectedOrder(null)}
                   className="w-full bg-neutral-900 text-white py-5 rounded-[24px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-neutral-200"
                 >
-                  Close Details
+                  Tutup Detail
                 </button>
               </div>
             </motion.div>
@@ -1134,22 +1141,22 @@ export default function AdminView() {
             >
               <div className="p-8 border-b border-neutral-50 flex items-center justify-between">
                 <h2 className="text-2xl font-black italic uppercase">
-                    {editingCategory ? 'Edit Category' : 'New Category'}
+                    {editingCategory ? 'Edit Kategori' : 'Kategori Baru'}
                 </h2>
                 <button onClick={() => setIsCategoryModalOpen(false)} className="p-3 bg-neutral-100 rounded-2xl"><XCircle className="w-6 h-6" /></button>
               </div>
 
               <form onSubmit={saveCategory} className="p-10 space-y-6">
                   <div>
-                    <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Category Name</label>
+                    <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Nama Kategori</label>
                     <input name="name" required defaultValue={editingCategory?.name} className="w-full bg-neutral-50 border-0 p-4 rounded-2xl focus:ring-2 focus:ring-orange-500" placeholder="e.g. Minuman" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Display Order</label>
+                    <label className="block text-[10px] font-black uppercase mb-1 tracking-widest">Urutan Tampil</label>
                     <input name="display_order" type="number" defaultValue={editingCategory?.display_order || 0} className="w-full bg-neutral-50 border-0 p-4 rounded-2xl focus:ring-2 focus:ring-orange-500" />
                   </div>
                   <button className="w-full bg-orange-600 text-white p-5 rounded-[24px] font-black uppercase tracking-widest shadow-xl shadow-orange-100 mt-4">
-                    Save Category
+                    Simpan Kategori
                   </button>
               </form>
             </motion.div>
@@ -1187,7 +1194,7 @@ function StatCard({ title, value, icon }: { title: string, value: string, icon: 
       <h2 className="text-3xl font-black text-neutral-900 italic">{value}</h2>
       <div className="mt-4 flex items-center gap-2 text-green-500">
         <TrendingUp className="w-4 h-4" />
-        <span className="text-xs font-bold font-mono">+12.5% from last month</span>
+        <span className="text-xs font-bold font-mono">+12.5% dari bulan lalu</span>
       </div>
     </div>
   );
